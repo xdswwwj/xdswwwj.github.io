@@ -1,0 +1,57 @@
+---
+import { getCollection } from 'astro:content';
+import BaseHead from '../../components/BaseHead.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import FormattedDate from '../../components/FormattedDate.astro';
+import { SITE_TITLE } from '../../consts';
+
+export async function getStaticPaths() {
+	const posts = await getCollection('blog');
+	const categories = [...new Set(posts.map((p) => p.data.category))];
+	return categories.map((category) => ({
+		params: { category },
+		props: {
+			category,
+			posts: posts
+				.filter((p) => p.data.category === category)
+				.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()),
+		},
+	}));
+}
+
+const { category, posts } = Astro.props;
+---
+
+<!doctype html>
+<html lang="ko">
+	<head>
+		<BaseHead title={`${category} · ${SITE_TITLE}`} description={`${category} 카테고리의 글`} />
+	</head>
+	<body>
+		<Header />
+		<main>
+			<h1>{category}</h1>
+			<p class="count">{posts.length}개의 글</p>
+			<ul>
+				{
+					posts.map((post) => (
+						<li>
+							<a href={`/blog/${post.id}/`}>{post.data.title}</a>
+							<p class="date"><FormattedDate date={post.data.pubDate} /></p>
+						</li>
+					))
+				}
+			</ul>
+			<p><a href="/categories/">← 모든 카테고리</a></p>
+		</main>
+		<Footer />
+	</body>
+</html>
+<style>
+	main { width: 720px; }
+	ul { list-style: none; padding: 0; }
+	ul li { margin-bottom: 1rem; }
+	ul li a { font-size: 1.15rem; }
+	.date, .count { color: rgb(var(--gray)); margin: 0.2em 0 0 0; }
+</style>

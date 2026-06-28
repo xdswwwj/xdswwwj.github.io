@@ -1,0 +1,42 @@
+---
+import { getCollection } from 'astro:content';
+import BaseHead from '../../components/BaseHead.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import { SITE_TITLE } from '../../consts';
+
+const posts = await getCollection('blog');
+const counts = new Map<string, number>();
+for (const p of posts) counts.set(p.data.category, (counts.get(p.data.category) ?? 0) + 1);
+const categories = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+---
+
+<!doctype html>
+<html lang="ko">
+	<head>
+		<BaseHead title={`카테고리 · ${SITE_TITLE}`} description="카테고리별 글 모음" />
+	</head>
+	<body>
+		<Header />
+		<main>
+			<h1>카테고리</h1>
+			<ul>
+				{
+					categories.map(([name, count]) => (
+						<li>
+							<a href={`/categories/${encodeURIComponent(name)}/`}>{name}</a>
+							<span class="count">({count})</span>
+						</li>
+					))
+				}
+			</ul>
+		</main>
+		<Footer />
+	</body>
+</html>
+<style>
+	main { width: 720px; }
+	ul { list-style: none; padding: 0; }
+	ul li { margin-bottom: 0.75rem; font-size: 1.2rem; }
+	.count { color: rgb(var(--gray)); }
+</style>

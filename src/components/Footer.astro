@@ -1,0 +1,19 @@
+---
+const today = new Date();
+---
+<footer>
+	© {today.getFullYear()} {''}도현의 개발 노트 · Built with Astro
+	<div class="social-links">
+		<a href="https://github.com/xdswwwj" target="_blank" rel="noopener">GitHub</a>
+	</div>
+</footer>
+<style>
+	footer {
+		padding: 2em 1em 4em 1em;
+		text-align: center;
+		color: rgb(var(--gray));
+	}
+	.social-links { margin-top: 0.5em; }
+	.social-links a { color: rgb(var(--gray)); text-decoration: none; }
+	.social-links a:hover { color: rgb(var(--accent)); }
+</style>

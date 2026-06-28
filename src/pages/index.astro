@@ -1,0 +1,29 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+---
+
+<!doctype html>
+<html lang="ko">
+	<head>
+		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
+	</head>
+	<body>
+		<Header />
+		<main>
+			<h1>{SITE_TITLE}</h1>
+			<p>{SITE_DESCRIPTION}</p>
+			<p>
+				"왜 이렇게 설계해야 하는가", "이 기술을 어떻게 써야 하는가" 같은 질문을 실무 경험에
+				비추어 정리하는 공간입니다.
+			</p>
+			<p>
+				<a href="/blog">→ 전체 글 보기</a><br />
+				<a href="/categories">→ 카테고리별 보기</a>
+			</p>
+		</main>
+		<Footer />
+	</body>
+</html>
