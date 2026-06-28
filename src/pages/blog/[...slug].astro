@@ -3,18 +3,40 @@ import { type CollectionEntry, getCollection, render } from 'astro:content';
 import BlogPost from '../../layouts/BlogPost.astro';
 
 export async function getStaticPaths() {
-	const posts = await getCollection('blog');
-	return posts.map((post) => ({
+	const posts = (await getCollection('blog')).sort(
+		(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+	);
+	return posts.map((post, i) => ({
 		params: { slug: post.id },
-		props: post,
+		props: {
+			post,
+			// newer post is at a lower index (desc sort)
+			newer: posts[i - 1] ?? null,
+			older: posts[i + 1] ?? null,
+		},
 	}));
 }
-type Props = CollectionEntry<'blog'>;
+type Props = {
+	post: CollectionEntry<'blog'>;
+	newer: CollectionEntry<'blog'> | null;
+	older: CollectionEntry<'blog'> | null;
+};
 
-const post = Astro.props;
-const { Content } = await render(post);
+const { post, newer, older } = Astro.props;
+const { Content, headings } = await render(post);
+
+// Korean-aware reading time: ~500 chars/min
+const text = post.body ?? '';
+const charCount = text.replace(/\s/g, '').length;
+const readingTime = Math.max(1, Math.round(charCount / 500));
 ---
 
-<BlogPost {...post.data}>
+<BlogPost
+	{...post.data}
+	readingTime={readingTime}
+	headings={headings}
+	newer={newer}
+	older={older}
+>
 	<Content />
 </BlogPost>

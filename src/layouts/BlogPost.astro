@@ -6,9 +6,25 @@ import Footer from '../components/Footer.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import Header from '../components/Header.astro';
 
-type Props = CollectionEntry<'blog'>['data'];
+type Props = CollectionEntry<'blog'>['data'] & {
+	readingTime?: number;
+	newer?: CollectionEntry<'blog'> | null;
+	older?: CollectionEntry<'blog'> | null;
+};
 
-const { title, description, pubDate, updatedDate, heroImage, category } = Astro.props;
+const {
+	title,
+	description,
+	pubDate,
+	updatedDate,
+	heroImage,
+	category,
+	readingTime,
+	newer,
+	older,
+} = Astro.props;
+
+const isArticle = readingTime !== undefined;
 ---
 
 <html lang="ko">
@@ -22,9 +38,22 @@ const { title, description, pubDate, updatedDate, heroImage, category } = Astro.
 				width: 720px;
 				max-width: calc(100% - 2em);
 				margin: auto;
-				padding: 3rem 1em;
+				padding: 2rem 1em 3rem;
 				color: var(--text);
 			}
+			.breadcrumb {
+				display: flex;
+				flex-wrap: wrap;
+				align-items: center;
+				gap: 0.4rem;
+				font-size: 0.85rem;
+				color: var(--text-muted);
+				margin-bottom: 1.75rem;
+			}
+			.breadcrumb a { color: var(--text-muted); text-decoration: none; }
+			.breadcrumb a:hover { color: var(--accent); }
+			.breadcrumb .sep { opacity: 0.4; }
+			.breadcrumb .current { color: var(--text); font-weight: 600; }
 			.title { margin-bottom: 2.5rem; }
 			.title h1 { margin: 0; font-size: clamp(2rem, 5vw, 2.6rem); letter-spacing: -0.03em; line-height: 1.15; }
 			.date { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.9rem; font-size: 0.9rem; color: var(--text-muted); }
@@ -38,10 +67,12 @@ const { title, description, pubDate, updatedDate, heroImage, category } = Astro.
 				font-size: 0.82rem;
 			}
 			.cat-pill:hover { background: rgba(var(--accent-rgb), 0.2); text-decoration: none; }
-			.last-updated-on { font-style: italic; margin-top: 0.25rem; }
+			.dotsep { opacity: 0.4; }
+			.last-updated-on { font-style: italic; }
 			.title hr { margin: 1.5rem 0 0; }
 			.prose :global(p) { line-height: 1.8; }
-			.prose :global(h2) { margin-top: 2.5rem; }
+			.prose :global(h2) { margin-top: 2.5rem; scroll-margin-top: 5rem; }
+			.prose :global(h3) { scroll-margin-top: 5rem; }
 			.prose :global(img) { box-shadow: var(--box-shadow); }
 			.prose :global(pre.mermaid) {
 				border: none;
@@ -51,6 +82,82 @@ const { title, description, pubDate, updatedDate, heroImage, category } = Astro.
 				display: flex;
 				justify-content: center;
 			}
+
+			/* Post footer navigation */
+			.post-nav {
+				width: 720px;
+				max-width: calc(100% - 2em);
+				margin: 0 auto;
+				padding: 0 1em 3rem;
+			}
+			.back-to-list {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.4rem;
+				font-size: 0.9rem;
+				font-weight: 600;
+				color: var(--text-muted);
+				margin-bottom: 1.5rem;
+			}
+			.back-to-list:hover { color: var(--accent); text-decoration: none; }
+			.adjacent {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 0.75rem;
+			}
+			.adjacent a {
+				display: flex;
+				flex-direction: column;
+				gap: 0.3rem;
+				padding: 1rem 1.2rem;
+				border: 1px solid var(--border);
+				border-radius: 14px;
+				background: var(--surface);
+				color: inherit;
+				text-decoration: none;
+				transition: border-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+			}
+			.adjacent a:hover {
+				border-color: rgba(var(--accent-rgb), 0.5);
+				box-shadow: var(--box-shadow);
+				transform: translateY(-2px);
+				text-decoration: none;
+			}
+			.adjacent .dir { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
+			.adjacent .next-title { font-size: 1rem; font-weight: 600; letter-spacing: -0.01em; }
+			.adjacent a:hover .next-title { color: var(--accent); }
+			.adjacent .to-older { text-align: right; }
+			.adjacent .to-older.solo { grid-column: 2; }
+			@media (max-width: 560px) {
+				.adjacent { grid-template-columns: 1fr; }
+				.adjacent .to-older { text-align: left; }
+				.adjacent .to-older.solo { grid-column: 1; }
+			}
+
+			/* Scroll to top */
+			#to-top {
+				position: fixed;
+				right: 1.5rem;
+				bottom: 1.5rem;
+				width: 44px;
+				height: 44px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				border: 1px solid var(--border);
+				border-radius: 12px;
+				background: color-mix(in srgb, var(--surface) 85%, transparent);
+				backdrop-filter: blur(8px);
+				color: var(--text-muted);
+				cursor: pointer;
+				opacity: 0;
+				visibility: hidden;
+				transform: translateY(8px);
+				transition: opacity 0.2s ease, transform 0.2s ease, color 0.15s ease, border-color 0.15s ease;
+				z-index: 40;
+			}
+			#to-top.show { opacity: 1; visibility: visible; transform: translateY(0); }
+			#to-top:hover { color: var(--accent); border-color: var(--accent); }
 		</style>
 	</head>
 
@@ -62,14 +169,26 @@ const { title, description, pubDate, updatedDate, heroImage, category } = Astro.
 					{heroImage && <Image width={1020} height={510} src={heroImage} alt="" />}
 				</div>
 				<div class="prose">
+					{
+						isArticle && (
+							<nav class="breadcrumb" aria-label="Breadcrumb">
+								<a href="/">홈</a>
+								<span class="sep">/</span>
+								<a href="/blog">글</a>
+								<span class="sep">/</span>
+								<a href={`/categories/${encodeURIComponent(category)}/`}>{category}</a>
+							</nav>
+						)
+					}
 					<div class="title">
 						<div class="date">
 							<a class="cat-pill" href={`/categories/${encodeURIComponent(category)}/`}>{category}</a>
 							<FormattedDate date={pubDate} />
+							{readingTime && <><span class="dotsep">·</span><span>{readingTime}분 읽기</span></>}
 							{
 								updatedDate && (
 									<span class="last-updated-on">
-										· Updated <FormattedDate date={updatedDate} />
+										· 수정 <FormattedDate date={updatedDate} />
 									</span>
 								)
 							}
@@ -80,8 +199,49 @@ const { title, description, pubDate, updatedDate, heroImage, category } = Astro.
 					<slot />
 				</div>
 			</article>
+			{
+				isArticle && (
+					<nav class="post-nav" aria-label="글 네비게이션">
+						<a class="back-to-list" href="/blog">← 전체 글 목록</a>
+						<div class="adjacent">
+							{newer && (
+								<a class="to-newer" href={`/blog/${newer.id}/`}>
+									<span class="dir">← 최신 글</span>
+									<span class="next-title">{newer.data.title}</span>
+								</a>
+							)}
+							{older && (
+								<a class={`to-older${newer ? '' : ' solo'}`} href={`/blog/${older.id}/`}>
+									<span class="dir">이전 글 →</span>
+									<span class="next-title">{older.data.title}</span>
+								</a>
+							)}
+						</div>
+					</nav>
+				)
+			}
 		</main>
 		<Footer />
+		<button id="to-top" type="button" aria-label="맨 위로">
+			<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+				<path d="M12 19V5M5 12l7-7 7 7"></path>
+			</svg>
+		</button>
+		<script is:inline>
+			(() => {
+				const btn = document.getElementById('to-top');
+				if (!btn) return;
+				const onScroll = () => {
+					if (window.scrollY > 400) btn.classList.add('show');
+					else btn.classList.remove('show');
+				};
+				window.addEventListener('scroll', onScroll, { passive: true });
+				onScroll();
+				btn.addEventListener('click', () => {
+					window.scrollTo({ top: 0, behavior: 'smooth' });
+				});
+			})();
+		</script>
 		<script>
 			import mermaid from 'mermaid';
 			mermaid.initialize({ startOnLoad: false, theme: 'default' });
