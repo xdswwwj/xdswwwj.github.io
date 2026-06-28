@@ -31,27 +31,87 @@ const { category, posts } = Astro.props;
 	<body>
 		<Header />
 		<main>
-			<h1>{category}</h1>
-			<p class="count">{posts.length}개의 글</p>
-			<ul>
+			<header class="page-head">
+				<p class="kicker">카테고리</p>
+				<h1>{category}</h1>
+				<p class="count">{posts.length}개의 글</p>
+			</header>
+			<ul class="post-list">
 				{
 					posts.map((post) => (
 						<li>
-							<a href={`/blog/${post.id}/`}>{post.data.title}</a>
-							<p class="date"><FormattedDate date={post.data.pubDate} /></p>
+							<a href={`/blog/${post.id}/`}>
+								<div class="meta">
+									<FormattedDate date={post.data.pubDate} />
+								</div>
+								<h2 class="title">{post.data.title}</h2>
+								<p class="excerpt">{post.data.description}</p>
+							</a>
 						</li>
 					))
 				}
 			</ul>
-			<p><a href="/categories/">← 모든 카테고리</a></p>
+			<p class="back"><a href="/categories/">← 모든 카테고리</a></p>
 		</main>
 		<Footer />
 	</body>
 </html>
+
 <style>
-	main { width: 720px; }
-	ul { list-style: none; padding: 0; }
-	ul li { margin-bottom: 1rem; }
-	ul li a { font-size: 1.15rem; }
-	.date, .count { color: rgb(var(--gray)); margin: 0.2em 0 0 0; }
+	.page-head {
+		margin-bottom: 2rem;
+		padding-bottom: 1.25rem;
+		border-bottom: 1px solid var(--border);
+	}
+	.kicker {
+		margin: 0 0 0.25rem;
+		font-size: 0.85rem;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--accent);
+		font-weight: 600;
+	}
+	.page-head h1 { margin-bottom: 0.25rem; }
+	.count { margin: 0; color: var(--text-muted); }
+	.post-list {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.6rem;
+	}
+	.post-list li a {
+		display: block;
+		padding: 1.2rem 1.35rem;
+		border: 1px solid var(--border);
+		border-radius: 14px;
+		background: var(--surface);
+		color: inherit;
+		text-decoration: none;
+		transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+	}
+	.post-list li a:hover {
+		border-color: rgba(var(--accent-rgb), 0.5);
+		box-shadow: var(--box-shadow);
+		text-decoration: none;
+		transform: translateY(-2px);
+	}
+	.meta {
+		font-size: 0.85rem;
+		color: var(--text-muted);
+		margin-bottom: 0.35rem;
+	}
+	.title {
+		margin: 0 0 0.35rem;
+		font-size: 1.25rem;
+	}
+	.post-list li a:hover .title { color: var(--accent); }
+	.excerpt {
+		margin: 0;
+		color: var(--text-muted);
+		font-size: 0.95rem;
+		line-height: 1.6;
+	}
+	.back { margin-top: 2rem; font-weight: 600; }
 </style>

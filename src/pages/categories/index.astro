@@ -19,13 +19,18 @@ const categories = [...counts.entries()].sort((a, b) => b[1] - a[1]);
 	<body>
 		<Header />
 		<main>
-			<h1>카테고리</h1>
-			<ul>
+			<header class="page-head">
+				<h1>카테고리</h1>
+				<p>{categories.length}개의 카테고리</p>
+			</header>
+			<ul class="chips">
 				{
 					categories.map(([name, count]) => (
 						<li>
-							<a href={`/categories/${encodeURIComponent(name)}/`}>{name}</a>
-							<span class="count">({count})</span>
+							<a href={`/categories/${encodeURIComponent(name)}/`}>
+								<span class="name">{name}</span>
+								<span class="count">{count}</span>
+							</a>
 						</li>
 					))
 				}
@@ -34,9 +39,47 @@ const categories = [...counts.entries()].sort((a, b) => b[1] - a[1]);
 		<Footer />
 	</body>
 </html>
+
 <style>
-	main { width: 720px; }
-	ul { list-style: none; padding: 0; }
-	ul li { margin-bottom: 0.75rem; font-size: 1.2rem; }
-	.count { color: rgb(var(--gray)); }
+	.page-head {
+		margin-bottom: 2rem;
+		padding-bottom: 1.25rem;
+		border-bottom: 1px solid var(--border);
+	}
+	.page-head h1 { margin-bottom: 0.25rem; }
+	.page-head p { margin: 0; color: var(--text-muted); }
+	.chips {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+	}
+	.chips li a {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.55rem 1rem;
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		background: var(--surface);
+		color: var(--text);
+		text-decoration: none;
+		font-size: 1rem;
+		transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+	}
+	.chips li a:hover {
+		border-color: rgba(var(--accent-rgb), 0.5);
+		color: var(--accent);
+		background: rgba(var(--accent-rgb), 0.06);
+		text-decoration: none;
+	}
+	.count {
+		font-size: 0.8rem;
+		color: var(--text-muted);
+		background: var(--surface-2);
+		border-radius: 999px;
+		padding: 0.05rem 0.5rem;
+	}
 </style>

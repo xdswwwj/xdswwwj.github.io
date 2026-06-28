@@ -2,18 +2,31 @@
 const today = new Date();
 ---
 <footer>
-	© {today.getFullYear()} {''}도현의 개발 노트 · Built with Astro
-	<div class="social-links">
+	<div class="footer-inner">
+		<span>© {today.getFullYear()} 도현의 개발 노트</span>
+		<span class="dot">·</span>
 		<a href="https://github.com/xdswwwj" target="_blank" rel="noopener">GitHub</a>
+		<span class="dot">·</span>
+		<span>Built with Astro</span>
 	</div>
 </footer>
 <style>
 	footer {
-		padding: 2em 1em 4em 1em;
+		flex-shrink: 0;
+		padding: 2.5em 1em 3em 1em;
 		text-align: center;
-		color: rgb(var(--gray));
+		color: var(--text-muted);
+		font-size: 0.9rem;
+		border-top: 1px solid var(--border);
 	}
-	.social-links { margin-top: 0.5em; }
-	.social-links a { color: rgb(var(--gray)); text-decoration: none; }
-	.social-links a:hover { color: rgb(var(--accent)); }
+	.footer-inner {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		align-items: center;
+		gap: 0.5em;
+	}
+	.dot { color: var(--border); }
+	footer a { color: var(--text-muted); text-decoration: none; }
+	footer a:hover { color: var(--accent); }
 </style>

@@ -1,8 +1,14 @@
 ---
+import { getCollection } from 'astro:content';
 import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
+import FormattedDate from '../components/FormattedDate.astro';
 import Header from '../components/Header.astro';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+
+const posts = (await getCollection('blog'))
+	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+	.slice(0, 5);
 ---
 
 <!doctype html>
@@ -13,17 +19,151 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 	<body>
 		<Header />
 		<main>
-			<h1>{SITE_TITLE}</h1>
-			<p>{SITE_DESCRIPTION}</p>
-			<p>
-				"왜 이렇게 설계해야 하는가", "이 기술을 어떻게 써야 하는가" 같은 질문을 실무 경험에
-				비추어 정리하는 공간입니다.
-			</p>
-			<p>
-				<a href="/blog">→ 전체 글 보기</a><br />
-				<a href="/categories">→ 카테고리별 보기</a>
-			</p>
+			<section class="hero">
+				<h1>{SITE_TITLE}</h1>
+				<p class="tagline">{SITE_DESCRIPTION}</p>
+				<p class="intro">
+					"왜 이렇게 설계해야 하는가", "이 기술을 어떻게 써야 하는가" 같은 질문을
+					실무 경험에 비추어 정리하는 공간입니다.
+				</p>
+				<div class="cta">
+					<a class="btn" href="/blog">전체 글 보기</a>
+					<a class="btn ghost" href="/categories">카테고리</a>
+				</div>
+			</section>
+
+			<section class="recent">
+				<h2 class="section-title">최근 글</h2>
+				<ul class="post-list">
+					{
+						posts.map((post) => (
+							<li>
+								<a href={`/blog/${post.id}/`}>
+									<div class="meta">
+										<span class="cat">{post.data.category}</span>
+										<FormattedDate date={post.data.pubDate} />
+									</div>
+									<h3 class="title">{post.data.title}</h3>
+									<p class="excerpt">{post.data.description}</p>
+								</a>
+							</li>
+						))
+					}
+				</ul>
+				<p class="more"><a href="/blog">→ 모든 글 보기</a></p>
+			</section>
 		</main>
 		<Footer />
 	</body>
 </html>
+
+<style>
+	.hero {
+		padding: 1.5rem 0 2.5rem;
+		border-bottom: 1px solid var(--border);
+		margin-bottom: 2.5rem;
+	}
+	.hero h1 {
+		font-size: 2.6rem;
+		margin-bottom: 0.5rem;
+	}
+	.tagline {
+		font-size: 1.15rem;
+		color: var(--text);
+		margin-bottom: 0.75rem;
+	}
+	.intro {
+		color: var(--text-muted);
+		margin-bottom: 1.5rem;
+	}
+	.cta {
+		display: flex;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+	}
+	.btn {
+		display: inline-block;
+		padding: 0.55rem 1.1rem;
+		border-radius: 10px;
+		font-size: 0.95rem;
+		font-weight: 600;
+		background: var(--accent);
+		color: #fff;
+		border: 1px solid var(--accent);
+		transition: background 0.15s ease, transform 0.05s ease;
+	}
+	.btn:hover {
+		background: var(--accent-hover);
+		color: #fff;
+		text-decoration: none;
+	}
+	.btn.ghost {
+		background: transparent;
+		color: var(--accent);
+	}
+	.btn.ghost:hover {
+		background: rgba(var(--accent-rgb), 0.08);
+		color: var(--accent);
+	}
+
+	.section-title {
+		font-size: 1.1rem;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--text-muted);
+		margin-bottom: 1.25rem;
+	}
+	.post-list {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+	.post-list li a {
+		display: block;
+		padding: 1.1rem 1.25rem;
+		border: 1px solid var(--border);
+		border-radius: 14px;
+		background: var(--surface);
+		color: inherit;
+		text-decoration: none;
+		transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+	}
+	.post-list li a:hover {
+		border-color: rgba(var(--accent-rgb), 0.5);
+		box-shadow: var(--box-shadow);
+		text-decoration: none;
+		transform: translateY(-2px);
+	}
+	.meta {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		font-size: 0.85rem;
+		color: var(--text-muted);
+		margin-bottom: 0.35rem;
+	}
+	.cat {
+		color: var(--accent);
+		font-weight: 600;
+	}
+	.post-list .title {
+		margin: 0 0 0.3rem;
+		font-size: 1.2rem;
+	}
+	.post-list li a:hover .title {
+		color: var(--accent);
+	}
+	.excerpt {
+		margin: 0;
+		color: var(--text-muted);
+		font-size: 0.95rem;
+		line-height: 1.6;
+	}
+	.more {
+		margin-top: 1.5rem;
+		font-weight: 600;
+	}
+</style>
