@@ -1,0 +1,53 @@
+media:
+  input: public/uploads
+  output: /uploads
+
+content:
+  - name: posts
+    label: 블로그 글
+    type: collection
+    path: src/content/blog
+    filename: '{fields.slug}.md'
+    view:
+      fields: [title, category, pubDate]
+      sort: [pubDate, title]
+      default:
+        sort: pubDate
+        order: desc
+    fields:
+      - name: title
+        label: 제목
+        type: string
+        required: true
+      - name: slug
+        label: 슬러그 (URL 주소, 영문·숫자·하이픈)
+        type: string
+        required: true
+        pattern:
+          regex: '^[a-z0-9-]+$'
+          message: '영문 소문자, 숫자, 하이픈(-)만 사용할 수 있어요.'
+      - name: description
+        label: 요약
+        type: text
+        required: true
+      - name: pubDate
+        label: 발행일
+        type: date
+        required: true
+        options:
+          format: 'yyyy-MM-dd'
+      - name: category
+        label: 카테고리
+        type: string
+        required: true
+      - name: updatedDate
+        label: 수정일 (선택)
+        type: date
+        options:
+          format: 'yyyy-MM-dd'
+      - name: heroImage
+        label: 대표 이미지 (선택)
+        type: image
+      - name: body
+        label: 본문
+        type: rich-text
