@@ -207,15 +207,46 @@ code {
 	border-radius: 6px;
 }
 pre {
-	padding: 1.25em;
+	padding: 1.25em 1.4em;
 	border-radius: 14px;
 	border: 1px solid var(--border);
 	overflow-x: auto;
+	font-size: 0.95em;
+	line-height: 1.7;
+	tab-size: 2;
 }
 pre > code {
 	all: unset;
 	font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
 	font-size: 0.9em;
+}
+
+/* Shiki dual-theme: light by default, swap under [data-theme='dark'] */
+.astro-code,
+.astro-code span {
+	color: var(--shiki-light);
+	background-color: var(--shiki-light-bg);
+	font-style: var(--shiki-light-font-style);
+	font-weight: var(--shiki-light-font-weight);
+	text-decoration: var(--shiki-light-text-decoration);
+}
+html[data-theme='dark'] .astro-code,
+html[data-theme='dark'] .astro-code span {
+	color: var(--shiki-dark);
+	background-color: var(--shiki-dark-bg);
+	font-style: var(--shiki-dark-font-style);
+	font-weight: var(--shiki-dark-font-weight);
+	text-decoration: var(--shiki-dark-text-decoration);
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme]) .astro-code,
+	:root:not([data-theme]) .astro-code span {
+		color: var(--shiki-dark);
+		background-color: var(--shiki-dark-bg);
+		font-style: var(--shiki-dark-font-style);
+		font-weight: var(--shiki-dark-font-weight);
+		text-decoration: var(--shiki-dark-text-decoration);
+	}
 }
 
 blockquote {

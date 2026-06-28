@@ -70,14 +70,178 @@ const isArticle = readingTime !== undefined;
 			.dotsep { opacity: 0.4; }
 			.last-updated-on { font-style: italic; }
 			.title hr { margin: 1.5rem 0 0; }
-			.prose :global(p) { line-height: 1.8; }
-			.prose :global(h2) { margin-top: 2.5rem; scroll-margin-top: 5rem; }
-			.prose :global(h3) { scroll-margin-top: 5rem; }
-			.prose :global(img) { box-shadow: var(--box-shadow); }
+			/* ── Article body typography ───────────────────────────── */
+			.prose :global(p) {
+				line-height: 1.85;
+				margin: 0 0 1.5em;
+			}
+			/* Lead paragraph (first paragraph after the title rule) */
+			.prose > :global(p:first-of-type) {
+				font-size: 1.15em;
+				line-height: 1.7;
+				color: var(--text);
+			}
+
+			.prose :global(h2),
+			.prose :global(h3),
+			.prose :global(h4) {
+				scroll-margin-top: 5rem;
+				letter-spacing: -0.02em;
+			}
+			.prose :global(h2) {
+				margin-top: 3rem;
+				margin-bottom: 1rem;
+				padding-bottom: 0.4rem;
+				font-size: 1.6rem;
+				border-bottom: 1px solid var(--border);
+			}
+			.prose :global(h3) {
+				margin-top: 2.25rem;
+				margin-bottom: 0.75rem;
+				font-size: 1.3rem;
+			}
+			.prose :global(h4) {
+				margin-top: 1.75rem;
+				margin-bottom: 0.6rem;
+				font-size: 1.1rem;
+			}
+			.prose :global(h2 + p),
+			.prose :global(h3 + p),
+			.prose :global(h4 + p) {
+				margin-top: 0;
+			}
+
+			/* Links inside body */
+			.prose :global(a) {
+				font-weight: 500;
+				text-decoration: underline;
+				text-decoration-color: rgba(var(--accent-rgb), 0.4);
+				text-underline-offset: 3px;
+				text-decoration-thickness: 1.5px;
+				transition: color 0.15s ease, text-decoration-color 0.15s ease;
+			}
+			.prose :global(a:hover) {
+				text-decoration-color: var(--accent);
+			}
+
+			/* Lists */
+			.prose :global(ul),
+			.prose :global(ol) {
+				margin: 0 0 1.5em;
+				padding-left: 1.5em;
+			}
+			.prose :global(li) {
+				margin: 0.4em 0;
+				line-height: 1.8;
+			}
+			.prose :global(li::marker) {
+				color: var(--accent);
+			}
+			.prose :global(li > ul),
+			.prose :global(li > ol) {
+				margin: 0.4em 0;
+			}
+
+			/* Inline code */
+			.prose :global(:not(pre) > code) {
+				color: var(--accent);
+				background: rgba(var(--accent-rgb), 0.08);
+				border: 1px solid rgba(var(--accent-rgb), 0.18);
+				font-weight: 500;
+			}
+
+			/* Code blocks */
+			.prose :global(pre) {
+				margin: 1.75em 0;
+				box-shadow: var(--box-shadow);
+			}
+
+			/* Blockquote */
+			.prose :global(blockquote) {
+				position: relative;
+				margin: 1.75em 0;
+				padding: 1em 1.25em 1em 1.5em;
+				border-left: 3px solid var(--accent);
+				border-radius: 0 12px 12px 0;
+				background: rgba(var(--accent-rgb), 0.05);
+				color: var(--text);
+				font-size: 1.02em;
+				font-style: normal;
+			}
+			.prose :global(blockquote p) {
+				margin-bottom: 0.75em;
+			}
+
+			/* Tables */
+			.prose :global(.table-wrap),
+			.prose :global(table) {
+				display: block;
+				overflow-x: auto;
+			}
+			.prose :global(table) {
+				margin: 1.75em 0;
+				border: 1px solid var(--border);
+				border-radius: 12px;
+				border-collapse: separate;
+				border-spacing: 0;
+				font-size: 0.95em;
+			}
+			.prose :global(th),
+			.prose :global(td) {
+				border: none;
+				border-bottom: 1px solid var(--border);
+				padding: 0.7em 1em;
+			}
+			.prose :global(thead th) {
+				background: var(--surface-2);
+				font-weight: 600;
+				white-space: nowrap;
+			}
+			.prose :global(tbody tr:last-child td) {
+				border-bottom: none;
+			}
+			.prose :global(tbody tr:nth-child(even)) {
+				background: color-mix(in srgb, var(--surface-2) 50%, transparent);
+			}
+
+			/* Images & figures */
+			.prose :global(img) {
+				display: block;
+				margin: 1.75em auto;
+				border-radius: 14px;
+				box-shadow: var(--box-shadow);
+			}
+			.prose :global(figure) {
+				margin: 1.75em 0;
+			}
+			.prose :global(figcaption) {
+				margin-top: 0.7em;
+				text-align: center;
+				font-size: 0.88em;
+				color: var(--text-muted);
+			}
+
+			/* Horizontal rule */
+			.prose :global(hr) {
+				margin: 3rem 0;
+				border: none;
+				height: 1px;
+				background: linear-gradient(
+					to right,
+					transparent,
+					var(--border) 20%,
+					var(--border) 80%,
+					transparent
+				);
+			}
+
+			/* Mermaid diagrams */
 			.prose :global(pre.mermaid) {
 				border: none;
 				background: none;
 				padding: 0;
+				margin: 1.75em 0;
+				box-shadow: none;
 				text-align: center;
 				display: flex;
 				justify-content: center;

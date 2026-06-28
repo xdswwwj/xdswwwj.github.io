@@ -11,6 +11,14 @@ export default defineConfig({
 	integrations: [mdx(), sitemap()],
 	markdown: {
 		remarkPlugins: [remarkMermaid],
+		shikiConfig: {
+			themes: {
+				light: 'github-light',
+				dark: 'github-dark-dimmed',
+			},
+			defaultColor: false,
+			wrap: true,
+		},
 	},
 	fonts: [
 		{
