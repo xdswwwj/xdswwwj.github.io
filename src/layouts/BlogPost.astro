@@ -26,10 +26,18 @@ const { title, description, pubDate, updatedDate, heroImage, category } = Astro.
 				color: var(--text);
 			}
 			.title { margin-bottom: 2.5rem; }
-			.title h1 { margin: 0; font-size: 2.2rem; }
-			.date { margin-bottom: 0.75rem; font-size: 0.9rem; color: var(--text-muted); }
+			.title h1 { margin: 0; font-size: clamp(2rem, 5vw, 2.6rem); letter-spacing: -0.03em; line-height: 1.15; }
+			.date { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.9rem; font-size: 0.9rem; color: var(--text-muted); }
 			.date a { color: var(--accent); text-decoration: none; font-weight: 600; }
-			.date a:hover { text-decoration: underline; }
+			.cat-pill {
+				display: inline-flex;
+				align-items: center;
+				padding: 0.2rem 0.7rem;
+				border-radius: 999px;
+				background: rgba(var(--accent-rgb), 0.12);
+				font-size: 0.82rem;
+			}
+			.cat-pill:hover { background: rgba(var(--accent-rgb), 0.2); text-decoration: none; }
 			.last-updated-on { font-style: italic; margin-top: 0.25rem; }
 			.title hr { margin: 1.5rem 0 0; }
 			.prose :global(p) { line-height: 1.8; }
@@ -56,12 +64,13 @@ const { title, description, pubDate, updatedDate, heroImage, category } = Astro.
 				<div class="prose">
 					<div class="title">
 						<div class="date">
-							<a href={`/categories/${encodeURIComponent(category)}/`}>{category}</a> · <FormattedDate date={pubDate} />
+							<a class="cat-pill" href={`/categories/${encodeURIComponent(category)}/`}>{category}</a>
+							<FormattedDate date={pubDate} />
 							{
 								updatedDate && (
-									<div class="last-updated-on">
-										Last updated on <FormattedDate date={updatedDate} />
-									</div>
+									<span class="last-updated-on">
+										· Updated <FormattedDate date={updatedDate} />
+									</span>
 								)
 							}
 						</div>

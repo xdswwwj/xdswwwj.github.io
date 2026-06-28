@@ -33,7 +33,7 @@ const { category, posts } = Astro.props;
 		<main>
 			<header class="page-head">
 				<p class="kicker">카테고리</p>
-				<h1>{category}</h1>
+				<h1><span class="gradient-text">{category}</span></h1>
 				<p class="count">{posts.length}개의 글</p>
 			</header>
 			<ul class="post-list">

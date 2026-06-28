@@ -1,55 +1,83 @@
 /*
-  Modern design system for 도현의 개발 노트.
-  Token names kept backwards-compatible (rgb(var(--x))) so components keep working,
-  while values are refreshed and dark mode is supported automatically.
+  Design system v2 — 도현의 개발 노트
+  - Deep palette, indigo→violet gradient accent
+  - Manual + system dark mode via html[data-theme]
+  - Legacy triplet tokens kept (rgb(var(--x))) for component compatibility
 */
 
-:root {
-	/* Brand */
-	--accent: #4f46e5;
-	--accent-hover: #4338ca;
-	--accent-rgb: 79, 70, 229;
+:root,
+:root[data-theme='light'] {
+	--accent: #5b53f0;
+	--accent-2: #9b6cff;
+	--accent-hover: #4a42d8;
+	--accent-rgb: 91, 83, 240;
+	--accent-gradient: linear-gradient(135deg, #5b53f0 0%, #9b6cff 100%);
 
-	/* Surfaces & text */
 	--bg: #ffffff;
 	--surface: #ffffff;
-	--surface-2: #f8fafc;
-	--border: #e7ebf0;
-	--text: #0f172a;
-	--text-muted: #64748b;
-	--code-bg: #f1f5f9;
+	--surface-2: #f6f7f9;
+	--border: #e8eaee;
+	--text: #0d1117;
+	--text-muted: #5b6472;
+	--code-bg: #f3f4f7;
+	--glow: rgba(91, 83, 240, 0.16);
 
-	/* Legacy triplets used across components via rgb(var(--x)) */
-	--black: 15, 23, 42;
-	--gray: 100, 116, 139;
-	--gray-light: 226, 232, 240;
-	--gray-dark: 30, 41, 59;
+	--black: 13, 17, 23;
+	--gray: 91, 100, 114;
+	--gray-light: 232, 234, 238;
+	--gray-dark: 30, 36, 48;
 	--gray-gradient: var(--surface-2), var(--bg);
 	--box-shadow:
-		0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 20px rgba(15, 23, 42, 0.08);
+		0 1px 2px rgba(13, 17, 23, 0.04), 0 8px 28px rgba(13, 17, 23, 0.08);
 }
 
+:root[data-theme='dark'] {
+	--accent: #8b8cff;
+	--accent-2: #c08cff;
+	--accent-hover: #a5a6ff;
+	--accent-rgb: 139, 140, 255;
+	--accent-gradient: linear-gradient(135deg, #8b8cff 0%, #c08cff 100%);
+
+	--bg: #0a0c12;
+	--surface: #11141d;
+	--surface-2: #161a24;
+	--border: #222838;
+	--text: #e8edf4;
+	--text-muted: #8b94a6;
+	--code-bg: #161a24;
+	--glow: rgba(139, 140, 255, 0.18);
+
+	--black: 232, 237, 244;
+	--gray: 139, 148, 166;
+	--gray-light: 34, 40, 56;
+	--gray-dark: 226, 232, 240;
+	--gray-gradient: var(--surface-2), var(--bg);
+	--box-shadow:
+		0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* System fallback when JS hasn't set a theme */
 @media (prefers-color-scheme: dark) {
-	:root {
-		--accent: #818cf8;
-		--accent-hover: #a5b4fc;
-		--accent-rgb: 129, 140, 248;
-
-		--bg: #0b0f17;
-		--surface: #111620;
-		--surface-2: #161c27;
-		--border: #232c3b;
-		--text: #e6edf3;
-		--text-muted: #94a3b8;
-		--code-bg: #161c27;
-
-		--black: 230, 237, 243;
-		--gray: 148, 163, 184;
-		--gray-light: 35, 44, 59;
+	:root:not([data-theme]) {
+		--accent: #8b8cff;
+		--accent-2: #c08cff;
+		--accent-hover: #a5a6ff;
+		--accent-rgb: 139, 140, 255;
+		--accent-gradient: linear-gradient(135deg, #8b8cff 0%, #c08cff 100%);
+		--bg: #0a0c12;
+		--surface: #11141d;
+		--surface-2: #161a24;
+		--border: #222838;
+		--text: #e8edf4;
+		--text-muted: #8b94a6;
+		--code-bg: #161a24;
+		--glow: rgba(139, 140, 255, 0.18);
+		--black: 232, 237, 244;
+		--gray: 139, 148, 166;
+		--gray-light: 34, 40, 56;
 		--gray-dark: 226, 232, 240;
-		--gray-gradient: var(--surface-2), var(--bg);
 		--box-shadow:
-			0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.45);
+			0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.5);
 	}
 }
 
@@ -64,13 +92,15 @@ html {
 }
 
 body {
-	font-family: var(--font-atkinson), system-ui, -apple-system, sans-serif;
+	font-family:
+		Pretendard, var(--font-atkinson), system-ui, -apple-system,
+		'Apple SD Gothic Neo', sans-serif;
 	margin: 0;
 	padding: 0;
 	text-align: left;
 	background: var(--bg);
 	color: var(--text);
-	font-size: 18px;
+	font-size: 17px;
 	line-height: 1.75;
 	word-wrap: break-word;
 	overflow-wrap: break-word;
@@ -79,10 +109,11 @@ body {
 	min-height: 100vh;
 	display: flex;
 	flex-direction: column;
+	transition: background 0.3s ease, color 0.3s ease;
 }
 
 main {
-	width: 720px;
+	width: 760px;
 	max-width: calc(100% - 2em);
 	margin: auto;
 	padding: 3rem 1em;
@@ -105,18 +136,15 @@ h1 {
 	font-size: 2.25rem;
 }
 h2 {
-	font-size: 1.65rem;
+	font-size: 1.6rem;
 	margin-top: 2rem;
 }
 h3 {
-	font-size: 1.35rem;
+	font-size: 1.3rem;
 	margin-top: 1.5rem;
 }
 h4 {
-	font-size: 1.15rem;
-}
-h5 {
-	font-size: 1rem;
+	font-size: 1.1rem;
 }
 
 strong,
@@ -167,11 +195,11 @@ th {
 img {
 	max-width: 100%;
 	height: auto;
-	border-radius: 10px;
+	border-radius: 12px;
 }
 
 code {
-	font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+	font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
 	font-size: 0.875em;
 	padding: 0.15em 0.4em;
 	background-color: var(--code-bg);
@@ -180,13 +208,13 @@ code {
 }
 pre {
 	padding: 1.25em;
-	border-radius: 12px;
+	border-radius: 14px;
 	border: 1px solid var(--border);
 	overflow-x: auto;
 }
 pre > code {
 	all: unset;
-	font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+	font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
 	font-size: 0.9em;
 }
 
@@ -208,12 +236,21 @@ hr {
 }
 
 ::selection {
-	background: rgba(var(--accent-rgb), 0.18);
+	background: rgba(var(--accent-rgb), 0.22);
+}
+
+/* Shared helpers */
+.gradient-text {
+	background: var(--accent-gradient);
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+	color: transparent;
 }
 
 @media (max-width: 720px) {
 	body {
-		font-size: 17px;
+		font-size: 16px;
 	}
 	main {
 		padding: 2rem 1em;

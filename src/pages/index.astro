@@ -6,9 +6,12 @@ import FormattedDate from '../components/FormattedDate.astro';
 import Header from '../components/Header.astro';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 
-const posts = (await getCollection('blog'))
-	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
-	.slice(0, 5);
+const allPosts = (await getCollection('blog')).sort(
+	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+);
+const posts = allPosts.slice(0, 5);
+
+const topics = [...new Set(allPosts.map((p) => p.data.category))].slice(0, 6);
 ---
 
 <!doctype html>
@@ -20,37 +23,63 @@ const posts = (await getCollection('blog'))
 		<Header />
 		<main>
 			<section class="hero">
-				<h1>{SITE_TITLE}</h1>
+				<div class="glow" aria-hidden="true"></div>
+				<span class="badge">
+					<span class="dot"></span>
+					Software Engineering Notes
+				</span>
+				<h1>
+					복잡한 문제를<br />
+					<span class="gradient-text">단순하게</span> 설계하는 법
+				</h1>
 				<p class="tagline">{SITE_DESCRIPTION}</p>
 				<p class="intro">
 					"왜 이렇게 설계해야 하는가", "이 기술을 어떻게 써야 하는가" 같은 질문을
 					실무 경험에 비추어 정리하는 공간입니다.
 				</p>
 				<div class="cta">
-					<a class="btn" href="/blog">전체 글 보기</a>
-					<a class="btn ghost" href="/categories">카테고리</a>
+					<a class="btn" href="/blog">전체 글 보기 →</a>
+					<a class="btn ghost" href="/about">소개</a>
 				</div>
+				{
+					topics.length > 0 && (
+						<div class="topics">
+							{topics.map((t) => (
+								<a class="topic" href={`/categories/${t}`}>
+									#{t}
+								</a>
+							))}
+						</div>
+					)
+				}
 			</section>
 
 			<section class="recent">
-				<h2 class="section-title">최근 글</h2>
+				<div class="section-head">
+					<h2 class="section-title">최근 글</h2>
+					<a class="more-link" href="/blog">모든 글 →</a>
+				</div>
 				<ul class="post-list">
 					{
-						posts.map((post) => (
+						posts.map((post, i) => (
 							<li>
 								<a href={`/blog/${post.id}/`}>
-									<div class="meta">
-										<span class="cat">{post.data.category}</span>
-										<FormattedDate date={post.data.pubDate} />
+									<span class="index">{String(i + 1).padStart(2, '0')}</span>
+									<div class="post-body">
+										<div class="meta">
+											<span class="cat">{post.data.category}</span>
+											<span class="sep">·</span>
+											<FormattedDate date={post.data.pubDate} />
+										</div>
+										<h3 class="title">{post.data.title}</h3>
+										<p class="excerpt">{post.data.description}</p>
 									</div>
-									<h3 class="title">{post.data.title}</h3>
-									<p class="excerpt">{post.data.description}</p>
+									<span class="arrow" aria-hidden="true">→</span>
 								</a>
 							</li>
 						))
 					}
 				</ul>
-				<p class="more"><a href="/blog">→ 모든 글 보기</a></p>
 			</section>
 		</main>
 		<Footer />
@@ -59,59 +88,142 @@ const posts = (await getCollection('blog'))
 
 <style>
 	.hero {
-		padding: 1.5rem 0 2.5rem;
+		position: relative;
+		padding: 3rem 0 3.5rem;
+		margin-bottom: 3rem;
 		border-bottom: 1px solid var(--border);
-		margin-bottom: 2.5rem;
+		overflow: hidden;
+	}
+	.glow {
+		position: absolute;
+		top: -120px;
+		left: 50%;
+		transform: translateX(-50%);
+		width: 620px;
+		height: 420px;
+		background: radial-gradient(
+			ellipse at center,
+			var(--glow) 0%,
+			transparent 70%
+		);
+		filter: blur(40px);
+		pointer-events: none;
+		z-index: -1;
+	}
+	.badge {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.3rem 0.8rem;
+		font-size: 0.8rem;
+		font-weight: 600;
+		letter-spacing: 0.02em;
+		color: var(--text-muted);
+		background: var(--surface-2);
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		margin-bottom: 1.5rem;
+	}
+	.dot {
+		width: 7px;
+		height: 7px;
+		border-radius: 50%;
+		background: var(--accent);
+		box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.2);
 	}
 	.hero h1 {
-		font-size: 2.6rem;
-		margin-bottom: 0.5rem;
+		font-size: clamp(2.2rem, 6vw, 3.4rem);
+		line-height: 1.1;
+		letter-spacing: -0.03em;
+		margin-bottom: 1rem;
 	}
 	.tagline {
-		font-size: 1.15rem;
+		font-size: 1.2rem;
 		color: var(--text);
-		margin-bottom: 0.75rem;
+		font-weight: 600;
+		margin-bottom: 0.6rem;
 	}
 	.intro {
 		color: var(--text-muted);
-		margin-bottom: 1.5rem;
+		max-width: 38rem;
+		margin-bottom: 1.75rem;
 	}
 	.cta {
 		display: flex;
 		gap: 0.75rem;
 		flex-wrap: wrap;
+		margin-bottom: 1.75rem;
 	}
 	.btn {
 		display: inline-block;
-		padding: 0.55rem 1.1rem;
-		border-radius: 10px;
+		padding: 0.65rem 1.3rem;
+		border-radius: 12px;
 		font-size: 0.95rem;
 		font-weight: 600;
-		background: var(--accent);
+		background: var(--accent-gradient);
 		color: #fff;
-		border: 1px solid var(--accent);
-		transition: background 0.15s ease, transform 0.05s ease;
+		border: 1px solid transparent;
+		box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.3);
+		transition: transform 0.1s ease, box-shadow 0.15s ease;
 	}
 	.btn:hover {
-		background: var(--accent-hover);
 		color: #fff;
 		text-decoration: none;
+		transform: translateY(-2px);
+		box-shadow: 0 10px 28px rgba(var(--accent-rgb), 0.4);
 	}
 	.btn.ghost {
-		background: transparent;
-		color: var(--accent);
+		background: var(--surface-2);
+		color: var(--text);
+		border-color: var(--border);
+		box-shadow: none;
 	}
 	.btn.ghost:hover {
-		background: rgba(var(--accent-rgb), 0.08);
 		color: var(--accent);
+		border-color: var(--accent);
+	}
+	.topics {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+	.topic {
+		font-size: 0.85rem;
+		font-weight: 500;
+		color: var(--text-muted);
+		padding: 0.3rem 0.7rem;
+		border-radius: 8px;
+		background: var(--surface-2);
+		border: 1px solid var(--border);
+		transition: color 0.15s ease, border-color 0.15s ease;
+	}
+	.topic:hover {
+		color: var(--accent);
+		border-color: var(--accent);
+		text-decoration: none;
 	}
 
+	.section-head {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		margin-bottom: 1.5rem;
+	}
 	.section-title {
-		font-size: 1.1rem;
+		font-size: 0.85rem;
 		text-transform: uppercase;
-		letter-spacing: 0.08em;
+		letter-spacing: 0.1em;
 		color: var(--text-muted);
-		margin-bottom: 1.25rem;
+		margin: 0;
+	}
+	.more-link {
+		font-size: 0.9rem;
+		font-weight: 600;
+		color: var(--text-muted);
+	}
+	.more-link:hover {
+		color: var(--accent);
+		text-decoration: none;
 	}
 	.post-list {
 		list-style: none;
@@ -122,14 +234,17 @@ const posts = (await getCollection('blog'))
 		gap: 0.5rem;
 	}
 	.post-list li a {
-		display: block;
-		padding: 1.1rem 1.25rem;
+		display: flex;
+		align-items: flex-start;
+		gap: 1.1rem;
+		padding: 1.25rem 1.4rem;
 		border: 1px solid var(--border);
-		border-radius: 14px;
+		border-radius: 16px;
 		background: var(--surface);
 		color: inherit;
 		text-decoration: none;
-		transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+		transition: border-color 0.15s ease, box-shadow 0.15s ease,
+			transform 0.1s ease;
 	}
 	.post-list li a:hover {
 		border-color: rgba(var(--accent-rgb), 0.5);
@@ -137,21 +252,37 @@ const posts = (await getCollection('blog'))
 		text-decoration: none;
 		transform: translateY(-2px);
 	}
+	.index {
+		font-size: 0.95rem;
+		font-weight: 700;
+		font-feature-settings: 'tnum';
+		color: var(--accent);
+		opacity: 0.5;
+		padding-top: 0.15rem;
+	}
+	.post-body {
+		flex: 1;
+		min-width: 0;
+	}
 	.meta {
 		display: flex;
 		align-items: center;
-		gap: 0.6rem;
-		font-size: 0.85rem;
+		gap: 0.5rem;
+		font-size: 0.82rem;
 		color: var(--text-muted);
-		margin-bottom: 0.35rem;
+		margin-bottom: 0.4rem;
 	}
 	.cat {
 		color: var(--accent);
 		font-weight: 600;
 	}
+	.sep {
+		opacity: 0.5;
+	}
 	.post-list .title {
-		margin: 0 0 0.3rem;
+		margin: 0 0 0.35rem;
 		font-size: 1.2rem;
+		letter-spacing: -0.01em;
 	}
 	.post-list li a:hover .title {
 		color: var(--accent);
@@ -159,11 +290,36 @@ const posts = (await getCollection('blog'))
 	.excerpt {
 		margin: 0;
 		color: var(--text-muted);
-		font-size: 0.95rem;
+		font-size: 0.93rem;
 		line-height: 1.6;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
 	}
-	.more {
-		margin-top: 1.5rem;
-		font-weight: 600;
+	.arrow {
+		align-self: center;
+		color: var(--text-muted);
+		font-size: 1.1rem;
+		opacity: 0;
+		transform: translateX(-4px);
+		transition: opacity 0.15s ease, transform 0.15s ease, color 0.15s ease;
+	}
+	.post-list li a:hover .arrow {
+		opacity: 1;
+		transform: translateX(0);
+		color: var(--accent);
+	}
+	@media (max-width: 720px) {
+		.hero {
+			padding: 2rem 0 2.5rem;
+		}
+		.arrow {
+			display: none;
+		}
+		.post-list li a {
+			padding: 1.1rem 1.2rem;
+			gap: 0.85rem;
+		}
 	}
 </style>
