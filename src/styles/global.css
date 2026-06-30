@@ -42,13 +42,13 @@
 	--surface: #11141d;
 	--surface-2: #161a24;
 	--border: #222838;
-	--text: #d6f2e3;
-	--text-muted: #84ab97;
+	--text: #a6e9c8;
+	--text-muted: #6fae90;
 	--code-bg: #161a24;
 	--glow: rgba(167, 139, 255, 0.2);
 
-	--black: 214, 242, 227;
-	--gray: 132, 171, 151;
+	--black: 166, 233, 200;
+	--gray: 111, 174, 144;
 	--gray-light: 34, 40, 56;
 	--gray-dark: 226, 232, 240;
 	--gray-gradient: var(--surface-2), var(--bg);
@@ -68,12 +68,12 @@
 		--surface: #11141d;
 		--surface-2: #161a24;
 		--border: #222838;
-		--text: #d6f2e3;
-		--text-muted: #84ab97;
+		--text: #a6e9c8;
+		--text-muted: #6fae90;
 		--code-bg: #161a24;
 		--glow: rgba(167, 139, 255, 0.2);
-		--black: 214, 242, 227;
-		--gray: 132, 171, 151;
+		--black: 166, 233, 200;
+		--gray: 111, 174, 144;
 		--gray-light: 34, 40, 56;
 		--gray-dark: 226, 232, 240;
 		--box-shadow:
