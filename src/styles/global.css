@@ -32,23 +32,23 @@
 }
 
 :root[data-theme='dark'] {
-	--accent: #a78bff;
-	--accent-2: #c89dff;
-	--accent-hover: #bda3ff;
-	--accent-rgb: 167, 139, 255;
-	--accent-gradient: linear-gradient(135deg, #a78bff 0%, #c89dff 100%);
+	--accent: #1ed760;
+	--accent-2: #4ce98a;
+	--accent-hover: #45e082;
+	--accent-rgb: 30, 215, 96;
+	--accent-gradient: linear-gradient(135deg, #1ed760 0%, #4ce98a 100%);
 
 	--bg: #0a0c12;
 	--surface: #11141d;
 	--surface-2: #161a24;
 	--border: #222838;
-	--text: #a6e9c8;
-	--text-muted: #6fae90;
+	--text: #e8edf4;
+	--text-muted: #8b94a6;
 	--code-bg: #161a24;
-	--glow: rgba(167, 139, 255, 0.2);
+	--glow: rgba(30, 215, 96, 0.18);
 
-	--black: 166, 233, 200;
-	--gray: 111, 174, 144;
+	--black: 232, 237, 244;
+	--gray: 139, 148, 166;
 	--gray-light: 34, 40, 56;
 	--gray-dark: 226, 232, 240;
 	--gray-gradient: var(--surface-2), var(--bg);
@@ -59,21 +59,21 @@
 /* System fallback when JS hasn't set a theme */
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme]) {
-		--accent: #a78bff;
-		--accent-2: #c89dff;
-		--accent-hover: #bda3ff;
-		--accent-rgb: 167, 139, 255;
-		--accent-gradient: linear-gradient(135deg, #a78bff 0%, #c89dff 100%);
+		--accent: #1ed760;
+		--accent-2: #4ce98a;
+		--accent-hover: #45e082;
+		--accent-rgb: 30, 215, 96;
+		--accent-gradient: linear-gradient(135deg, #1ed760 0%, #4ce98a 100%);
 		--bg: #0a0c12;
 		--surface: #11141d;
 		--surface-2: #161a24;
 		--border: #222838;
-		--text: #a6e9c8;
-		--text-muted: #6fae90;
+		--text: #e8edf4;
+		--text-muted: #8b94a6;
 		--code-bg: #161a24;
-		--glow: rgba(167, 139, 255, 0.2);
-		--black: 166, 233, 200;
-		--gray: 111, 174, 144;
+		--glow: rgba(30, 215, 96, 0.18);
+		--black: 232, 237, 244;
+		--gray: 139, 148, 166;
 		--gray-light: 34, 40, 56;
 		--gray-dark: 226, 232, 240;
 		--box-shadow:
