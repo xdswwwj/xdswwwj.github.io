@@ -647,38 +647,48 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 				// TOC scroll spy
 				const tocLinks = [...document.querySelectorAll('.toc a[data-slug]')];
 				if (tocLinks.length) {
-					const linkBySlug = new Map(
-						tocLinks.map((a) => [a.dataset.slug, a])
-					);
 					const targets = tocLinks
 						.map((a) => document.getElementById(a.dataset.slug))
 						.filter(Boolean);
 					let current = null;
-					const setActive = (slug) => {
-						if (slug === current) return;
-						current = slug;
+					const setActive = (id) => {
+						if (id === current) return;
+						current = id;
 						tocLinks.forEach((a) =>
-							a.classList.toggle('active', a.dataset.slug === slug)
+							a.classList.toggle('active', a.dataset.slug === id)
 						);
 					};
-					const spy = () => {
-						const doc = document.documentElement;
-						// At page bottom, force-activate the last heading
-						if (
-							window.innerHeight + window.scrollY >=
-							doc.scrollHeight - 2
-						) {
-							setActive(targets[targets.length - 1].id);
-							return;
+					// Activation scroll position for each heading. On short posts the
+					// headings sit below the scrollable range, so compress the points
+					// proportionally so every heading still gets its turn (no 1→4 jump).
+					const doc = document.documentElement;
+					let points = [];
+					const recalc = () => {
+						const max = Math.max(1, doc.scrollHeight - window.innerHeight);
+						const line = Math.min(window.innerHeight * 0.3, 140);
+						let pts = targets.map((t) => Math.max(0, t.offsetTop - line));
+						const last = pts[pts.length - 1];
+						if (last > max) {
+							const scale = max / last;
+							pts = pts.map((p) => p * scale);
 						}
-						let active = targets[0];
-						for (const t of targets) {
-							if (t.getBoundingClientRect().top <= 120) active = t;
+						points = pts;
+					};
+					const spy = () => {
+						const y = window.scrollY;
+						let idx = 0;
+						for (let i = 0; i < points.length; i++) {
+							if (y >= points[i] - 1) idx = i;
 							else break;
 						}
-						if (active) setActive(active.id);
+						setActive(targets[idx].id);
 					};
+					recalc();
 					window.addEventListener('scroll', spy, { passive: true });
+					window.addEventListener('resize', () => {
+						recalc();
+						spy();
+					});
 					spy();
 				}
 			})();
