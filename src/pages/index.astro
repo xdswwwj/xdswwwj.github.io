@@ -24,26 +24,26 @@ const topics = [...new Set(allPosts.map((p) => p.data.category))].slice(0, 6);
 		<main>
 			<section class="hero">
 				<div class="glow" aria-hidden="true"></div>
-				<span class="badge">
+				<span class="badge rise" style="animation-delay: 0.05s">
 					<span class="dot"></span>
 					소프트웨어 엔지니어링 노트
 				</span>
-				<h1>
+				<h1 class="rise" style="animation-delay: 0.12s">
 					복잡한 문제를<br />
 					<span class="gradient-text">단순하게</span> 설계하는 법
 				</h1>
-				<p class="tagline">{SITE_DESCRIPTION}</p>
-				<p class="intro">
+				<p class="tagline rise" style="animation-delay: 0.19s">{SITE_DESCRIPTION}</p>
+				<p class="intro rise" style="animation-delay: 0.26s">
 					"왜 이렇게 설계해야 하는가", "이 기술을 어떻게 써야 하는가" 같은 질문을
 					실무 경험에 비추어 정리하는 공간입니다.
 				</p>
-				<div class="cta">
+				<div class="cta rise" style="animation-delay: 0.33s">
 					<a class="btn" href="/blog">전체 글 보기 →</a>
 					<a class="btn ghost" href="/about">소개</a>
 				</div>
 				{
 					topics.length > 0 && (
-						<div class="topics">
+						<div class="topics rise" style="animation-delay: 0.4s">
 							{topics.map((t) => (
 								<a class="topic" href={`/categories/${t}`}>
 									#{t}
@@ -62,7 +62,7 @@ const topics = [...new Set(allPosts.map((p) => p.data.category))].slice(0, 6);
 				<ul class="post-list">
 					{
 						posts.map((post, i) => (
-							<li>
+							<li class="reveal" style={`transition-delay: ${i * 0.06}s`}>
 								<a href={`/blog/${post.id}/`}>
 									<span class="index">{String(i + 1).padStart(2, '0')}</span>
 									<div class="post-body">
@@ -83,6 +83,28 @@ const topics = [...new Set(allPosts.map((p) => p.data.category))].slice(0, 6);
 			</section>
 		</main>
 		<Footer />
+		<script is:inline>
+			(() => {
+				const els = document.querySelectorAll('.reveal');
+				if (!els.length) return;
+				if (!('IntersectionObserver' in window)) {
+					els.forEach((el) => el.classList.add('in'));
+					return;
+				}
+				const io = new IntersectionObserver(
+					(entries) => {
+						entries.forEach((e) => {
+							if (e.isIntersecting) {
+								e.target.classList.add('in');
+								io.unobserve(e.target);
+							}
+						});
+					},
+					{ rootMargin: '0px 0px -10% 0px', threshold: 0.05 }
+				);
+				els.forEach((el) => io.observe(el));
+			})();
+		</script>
 	</body>
 </html>
 
@@ -109,6 +131,14 @@ const topics = [...new Set(allPosts.map((p) => p.data.category))].slice(0, 6);
 		filter: blur(40px);
 		pointer-events: none;
 		z-index: -1;
+		animation: glow-float 9s ease-in-out infinite;
+	}
+	@keyframes glow-float {
+		0%, 100% { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
+		50% { transform: translateX(-50%) translateY(18px) scale(1.06); opacity: 0.85; }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.glow { animation: none; }
 	}
 	.badge {
 		display: inline-flex;

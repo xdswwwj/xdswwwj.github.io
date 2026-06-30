@@ -54,9 +54,10 @@ const categories = [...new Set(posts.map((p) => p.data.category))];
 
 			<ul class="post-list" id="post-list">
 				{
-					posts.map((post) => (
+					posts.map((post, i) => (
 						<li
-							class="post-item"
+							class="post-item reveal"
+							style={`transition-delay: ${Math.min(i, 8) * 0.05}s`}
 							data-title={post.data.title.toLowerCase()}
 							data-desc={post.data.description.toLowerCase()}
 							data-cat={post.data.category}
@@ -114,6 +115,27 @@ const categories = [...new Set(posts.map((p) => p.data.category))];
 						apply();
 					});
 				});
+			})();
+
+			(() => {
+				const els = document.querySelectorAll('.reveal');
+				if (!els.length) return;
+				if (!('IntersectionObserver' in window)) {
+					els.forEach((el) => el.classList.add('in'));
+					return;
+				}
+				const io = new IntersectionObserver(
+					(entries) => {
+						entries.forEach((e) => {
+							if (e.isIntersecting) {
+								e.target.classList.add('in');
+								io.unobserve(e.target);
+							}
+						});
+					},
+					{ rootMargin: '0px 0px -8% 0px', threshold: 0.05 }
+				);
+				els.forEach((el) => io.observe(el));
 			})();
 		</script>
 	</body>
