@@ -322,10 +322,104 @@ const isArticle = readingTime !== undefined;
 			}
 			#to-top.show { opacity: 1; visibility: visible; transform: translateY(0); }
 			#to-top:hover { color: var(--accent); border-color: var(--accent); }
+
+			/* Reading progress bar */
+			#read-progress {
+				position: fixed;
+				top: 0;
+				left: 0;
+				height: 3px;
+				width: 0;
+				background: var(--accent-gradient);
+				box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.5);
+				z-index: 60;
+				transition: width 0.08s linear;
+			}
+
+			/* Code block with toolbar (language label + copy) */
+			.prose :global(.code-block) {
+				margin: 1.85em 0;
+				border: 1px solid var(--border);
+				border-radius: 14px;
+				overflow: hidden;
+				box-shadow: var(--box-shadow);
+			}
+			.prose :global(.code-toolbar) {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 0.5rem 0.55rem 0.5rem 1rem;
+				background: var(--surface-2);
+				border-bottom: 1px solid var(--border);
+			}
+			.prose :global(.code-lang) {
+				font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+				font-size: 0.72rem;
+				font-weight: 700;
+				text-transform: uppercase;
+				letter-spacing: 0.06em;
+				color: var(--text-muted);
+			}
+			.prose :global(.code-copy) {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.35rem;
+				font-size: 0.74rem;
+				font-weight: 600;
+				color: var(--text-muted);
+				background: transparent;
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				padding: 0.28rem 0.6rem;
+				cursor: pointer;
+				transition: color 0.15s ease, border-color 0.15s ease,
+					background 0.15s ease;
+			}
+			.prose :global(.code-copy:hover) {
+				color: var(--accent);
+				border-color: var(--accent);
+				background: rgba(var(--accent-rgb), 0.08);
+			}
+			.prose :global(.code-copy.copied) {
+				color: #16a34a;
+				border-color: rgba(22, 163, 74, 0.5);
+				background: rgba(22, 163, 74, 0.1);
+			}
+			.prose :global(.code-copy svg) { width: 14px; height: 14px; }
+			.prose :global(.code-block pre) {
+				margin: 0;
+				border: none;
+				border-radius: 0;
+				box-shadow: none;
+			}
+
+			/* Heading anchor links */
+			.prose :global(.heading-anchor) {
+				margin-left: 0.45rem;
+				color: var(--text-muted);
+				font-weight: 400;
+				text-decoration: none;
+				opacity: 0;
+				transition: opacity 0.15s ease, color 0.15s ease;
+			}
+			.prose :global(h2:hover) .heading-anchor,
+			.prose :global(h3:hover) .heading-anchor,
+			.prose :global(h4:hover) .heading-anchor {
+				opacity: 0.55;
+			}
+			.prose :global(.heading-anchor:hover) {
+				opacity: 1;
+				color: var(--accent);
+				text-decoration: none;
+			}
+			@media (max-width: 720px) {
+				.prose :global(.heading-anchor) { display: none; }
+			}
 		</style>
 	</head>
 
 	<body>
+		{isArticle && <div id="read-progress"></div>}
 		<Header />
 		<main>
 			<article>
@@ -394,16 +488,76 @@ const isArticle = readingTime !== undefined;
 		<script is:inline>
 			(() => {
 				const btn = document.getElementById('to-top');
-				if (!btn) return;
+				const bar = document.getElementById('read-progress');
+
 				const onScroll = () => {
-					if (window.scrollY > 400) btn.classList.add('show');
-					else btn.classList.remove('show');
+					if (btn) {
+						if (window.scrollY > 400) btn.classList.add('show');
+						else btn.classList.remove('show');
+					}
+					if (bar) {
+						const h = document.documentElement;
+						const max = h.scrollHeight - h.clientHeight;
+						bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+					}
 				};
 				window.addEventListener('scroll', onScroll, { passive: true });
+				window.addEventListener('resize', onScroll);
 				onScroll();
-				btn.addEventListener('click', () => {
-					window.scrollTo({ top: 0, behavior: 'smooth' });
+
+				if (btn) {
+					btn.addEventListener('click', () => {
+						window.scrollTo({ top: 0, behavior: 'smooth' });
+					});
+				}
+
+				// Code block toolbars
+				const copyIcon =
+					'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+				document.querySelectorAll('.prose pre.astro-code').forEach((pre) => {
+					const lang = pre.getAttribute('data-language') || 'code';
+					const wrap = document.createElement('div');
+					wrap.className = 'code-block';
+					const toolbar = document.createElement('div');
+					toolbar.className = 'code-toolbar';
+					const label = document.createElement('span');
+					label.className = 'code-lang';
+					label.textContent = lang;
+					const copyBtn = document.createElement('button');
+					copyBtn.type = 'button';
+					copyBtn.className = 'code-copy';
+					copyBtn.innerHTML = copyIcon + '<span>복사</span>';
+					const txt = copyBtn.querySelector('span');
+					copyBtn.addEventListener('click', async () => {
+						const code = pre.querySelector('code')?.innerText ?? pre.innerText;
+						try {
+							await navigator.clipboard.writeText(code);
+							copyBtn.classList.add('copied');
+							txt.textContent = '복사됨';
+							setTimeout(() => {
+								copyBtn.classList.remove('copied');
+								txt.textContent = '복사';
+							}, 1600);
+						} catch (e) {}
+					});
+					toolbar.appendChild(label);
+					toolbar.appendChild(copyBtn);
+					pre.parentNode.insertBefore(wrap, pre);
+					wrap.appendChild(toolbar);
+					wrap.appendChild(pre);
 				});
+
+				// Heading anchors
+				document
+					.querySelectorAll('.prose h2[id], .prose h3[id], .prose h4[id]')
+					.forEach((h) => {
+						const a = document.createElement('a');
+						a.className = 'heading-anchor';
+						a.href = '#' + h.id;
+						a.setAttribute('aria-label', '이 섹션으로 가는 링크');
+						a.textContent = '#';
+						h.appendChild(a);
+					});
 			})();
 		</script>
 		<script>
