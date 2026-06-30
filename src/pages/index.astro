@@ -104,27 +104,6 @@ const topics = [...new Set(allPosts.map((p) => p.data.category))].slice(0, 6);
 						els.forEach((el) => io.observe(el));
 					}
 				}
-
-				// Cursor-follow spotlight over the hero
-				const hero = document.querySelector('.hero');
-				const fine = matchMedia('(pointer: fine)').matches;
-				const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-				if (hero && fine && !reduce) {
-					let raf = 0;
-					hero.addEventListener('pointermove', (e) => {
-						if (raf) return;
-						raf = requestAnimationFrame(() => {
-							raf = 0;
-							const r = hero.getBoundingClientRect();
-							hero.style.setProperty('--mx', ((e.clientX - r.left) / r.width) * 100 + '%');
-							hero.style.setProperty('--my', ((e.clientY - r.top) / r.height) * 100 + '%');
-							hero.classList.add('pointer-active');
-						});
-					});
-					hero.addEventListener('pointerleave', () =>
-						hero.classList.remove('pointer-active')
-					);
-				}
 			})();
 		</script>
 	</body>
@@ -137,27 +116,6 @@ const topics = [...new Set(allPosts.map((p) => p.data.category))].slice(0, 6);
 		margin-bottom: 3rem;
 		border-bottom: 1px solid var(--border);
 		overflow: hidden;
-	}
-	/* Cursor-follow spotlight (desktop, motion-on only) */
-	.hero::after {
-		content: '';
-		position: absolute;
-		inset: 0;
-		z-index: -1;
-		pointer-events: none;
-		background: radial-gradient(
-			460px circle at var(--mx, 50%) var(--my, 0%),
-			rgba(var(--accent-rgb), 0.1),
-			transparent 60%
-		);
-		opacity: 0;
-		transition: opacity 0.45s ease;
-	}
-	.hero.pointer-active::after {
-		opacity: 1;
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.hero::after { display: none; }
 	}
 	.glow {
 		position: absolute;

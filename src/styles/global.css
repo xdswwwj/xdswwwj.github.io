@@ -308,6 +308,27 @@ hr {
 	white-space: nowrap;
 }
 
+/* ── Site-wide cursor-follow ambient spotlight ─────────── */
+#cursor-glow {
+	position: fixed;
+	inset: 0;
+	z-index: -1;
+	pointer-events: none;
+	background: radial-gradient(
+		500px circle at var(--mx, 50%) var(--my, 50%),
+		rgba(var(--accent-rgb), 0.08),
+		transparent 65%
+	);
+	opacity: 0;
+	transition: opacity 0.4s ease;
+}
+#cursor-glow.on {
+	opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+	#cursor-glow { display: none; }
+}
+
 /* ── Motion & focus polish ─────────────────────────────── */
 :focus-visible {
 	outline: 2px solid var(--accent);

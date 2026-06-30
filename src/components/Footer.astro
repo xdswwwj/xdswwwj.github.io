@@ -10,6 +10,7 @@ const today = new Date();
 		<span>Astro로 제작</span>
 	</div>
 </footer>
+<div id="cursor-glow" aria-hidden="true"></div>
 <button id="back-to-top" type="button" aria-label="맨 위로" title="맨 위로">
 	<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 		<path d="M12 19V5M5 12l7-7 7 7"></path>
@@ -18,14 +19,34 @@ const today = new Date();
 <script is:inline>
 	(() => {
 		const btn = document.getElementById('back-to-top');
-		if (!btn) return;
-		const toggle = () => btn.classList.toggle('show', window.scrollY > 400);
-		toggle();
-		window.addEventListener('scroll', toggle, { passive: true });
-		btn.addEventListener('click', () => {
-			const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-			window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
-		});
+		if (btn) {
+			const toggle = () => btn.classList.toggle('show', window.scrollY > 400);
+			toggle();
+			window.addEventListener('scroll', toggle, { passive: true });
+			btn.addEventListener('click', () => {
+				const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+				window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+			});
+		}
+
+		// Site-wide cursor-follow ambient spotlight (desktop, motion-on only)
+		const glow = document.getElementById('cursor-glow');
+		const fine = matchMedia('(pointer: fine)').matches;
+		const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+		if (glow && fine && !reduce) {
+			const root = document.documentElement;
+			let raf = 0;
+			window.addEventListener('pointermove', (e) => {
+				if (raf) return;
+				raf = requestAnimationFrame(() => {
+					raf = 0;
+					root.style.setProperty('--mx', e.clientX + 'px');
+					root.style.setProperty('--my', e.clientY + 'px');
+					glow.classList.add('on');
+				});
+			}, { passive: true });
+			document.addEventListener('mouseleave', () => glow.classList.remove('on'));
+		}
 	})();
 </script>
 <style>
