@@ -11,8 +11,10 @@ type Heading = { depth: number; slug: string; text: string };
 type Props = CollectionEntry<'blog'>['data'] & {
 	readingTime?: number;
 	headings?: Heading[];
+	ogImage?: string;
 	newer?: CollectionEntry<'blog'> | null;
 	older?: CollectionEntry<'blog'> | null;
+	related?: CollectionEntry<'blog'>[];
 };
 
 const {
@@ -22,10 +24,13 @@ const {
 	updatedDate,
 	heroImage,
 	category,
+	tags = [],
 	readingTime,
 	headings = [],
+	ogImage,
 	newer,
 	older,
+	related = [],
 } = Astro.props;
 
 const isArticle = readingTime !== undefined;
@@ -34,7 +39,16 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 
 <html lang="ko">
 	<head>
-		<BaseHead title={title} description={description} />
+		<BaseHead
+			title={title}
+			description={description}
+			image={heroImage}
+			ogImage={ogImage}
+			type={isArticle ? 'article' : 'website'}
+			pubDate={pubDate}
+			updatedDate={updatedDate}
+			category={category}
+		/>
 		<style>
 			main { width: 100%; max-width: 100%; margin: 0; padding: 0; }
 			.hero-image { width: 100%; max-width: 1020px; margin: 2rem auto 0; padding: 0 1em; }
@@ -75,6 +89,31 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 			.dotsep { opacity: 0.4; }
 			.last-updated-on { font-style: italic; }
 			.title hr { margin: 1.5rem 0 0; }
+			.tag-list {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.45rem;
+				list-style: none;
+				margin: 1rem 0 0;
+				padding: 0;
+			}
+			.tag-list a {
+				display: inline-block;
+				padding: 0.22rem 0.65rem;
+				font-size: 0.82rem;
+				font-weight: 500;
+				color: var(--text-muted);
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				text-decoration: none;
+				transition: color 0.15s ease, border-color 0.15s ease;
+			}
+			.tag-list a:hover {
+				color: var(--accent);
+				border-color: var(--accent);
+				text-decoration: none;
+			}
 			/* ── Article body typography ───────────────────────────── */
 			.prose :global(p) {
 				line-height: 1.85;
@@ -288,12 +327,79 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 				justify-content: center;
 			}
 
+			/* Related posts */
+			.related {
+				width: 720px;
+				max-width: calc(100% - 2em);
+				margin: 0 auto;
+				padding: 2.5rem 1em 0;
+			}
+			.related-title {
+				margin: 0 0 1.1rem;
+				font-size: 0.85rem;
+				text-transform: uppercase;
+				letter-spacing: 0.1em;
+				color: var(--text-muted);
+			}
+			.related-list {
+				list-style: none;
+				margin: 0;
+				padding: 0;
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: 0.75rem;
+			}
+			.related-list a {
+				display: flex;
+				flex-direction: column;
+				gap: 0.35rem;
+				height: 100%;
+				padding: 1rem 1.1rem;
+				border: 1px solid var(--border);
+				border-radius: 14px;
+				background: var(--surface);
+				color: inherit;
+				text-decoration: none;
+				transition: border-color 0.15s ease, transform 0.1s ease,
+					box-shadow 0.15s ease;
+			}
+			.related-list a:hover {
+				border-color: rgba(var(--accent-rgb), 0.5);
+				box-shadow: var(--box-shadow);
+				transform: translateY(-2px);
+				text-decoration: none;
+			}
+			.related-cat {
+				font-size: 0.78rem;
+				font-weight: 600;
+				color: var(--accent);
+			}
+			.related-h {
+				font-size: 1rem;
+				font-weight: 600;
+				letter-spacing: -0.01em;
+				line-height: 1.4;
+			}
+			.related-list a:hover .related-h { color: var(--accent); }
+			.related-desc {
+				font-size: 0.85rem;
+				color: var(--text-muted);
+				line-height: 1.5;
+				display: -webkit-box;
+				-webkit-line-clamp: 2;
+				-webkit-box-orient: vertical;
+				overflow: hidden;
+			}
+			@media (max-width: 640px) {
+				.related-list { grid-template-columns: 1fr; }
+			}
+
 			/* Post footer navigation */
 			.post-nav {
 				width: 720px;
 				max-width: calc(100% - 2em);
 				margin: 0 auto;
-				padding: 0 1em 3rem;
+				padding: 2rem 1em 3rem;
 			}
 			.back-to-list {
 				display: inline-flex;
@@ -573,11 +679,40 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 							}
 						</div>
 						<h1>{title}</h1>
+						{
+							tags.length > 0 && (
+								<ul class="tag-list">
+									{tags.map((t) => (
+										<li>
+											<a href={`/tags/${encodeURIComponent(t)}/`}>#{t}</a>
+										</li>
+									))}
+								</ul>
+							)
+						}
 						<hr />
 					</div>
 					<slot />
 				</div>
 			</article>
+			{
+				isArticle && related.length > 0 && (
+					<section class="related" aria-label="연관 글">
+						<h2 class="related-title">함께 읽으면 좋은 글</h2>
+						<ul class="related-list">
+							{related.map((r) => (
+								<li>
+									<a href={`/blog/${r.id}/`}>
+										<span class="related-cat">{r.data.category}</span>
+										<span class="related-h">{r.data.title}</span>
+										<span class="related-desc">{r.data.description}</span>
+									</a>
+								</li>
+							))}
+						</ul>
+					</section>
+				)
+			}
 			{
 				isArticle && (
 					<nav class="post-nav" aria-label="글 네비게이션">

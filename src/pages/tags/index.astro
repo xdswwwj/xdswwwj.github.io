@@ -1,0 +1,99 @@
+---
+import { getCollection } from 'astro:content';
+import BaseHead from '../../components/BaseHead.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import { SITE_TITLE } from '../../consts';
+
+const posts = await getCollection('blog');
+const counts = new Map<string, number>();
+for (const p of posts) for (const t of p.data.tags ?? []) counts.set(t, (counts.get(t) ?? 0) + 1);
+const tags = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+---
+
+<!doctype html>
+<html lang="ko">
+	<head>
+		<BaseHead title={`태그 · ${SITE_TITLE}`} description="태그별 글 모음" />
+	</head>
+	<body>
+		<Header />
+		<main>
+			<header class="page-head">
+				<span class="kicker">주제별 모음</span>
+				<h1><span class="gradient-text">태그</span></h1>
+				<p>{tags.length}개의 태그</p>
+			</header>
+			{
+				tags.length > 0 ? (
+					<ul class="chips">
+						{tags.map(([name, count]) => (
+							<li>
+								<a href={`/tags/${encodeURIComponent(name)}/`}>
+									<span class="name">#{name}</span>
+									<span class="count">{count}</span>
+								</a>
+							</li>
+						))}
+					</ul>
+				) : (
+					<p class="empty">아직 태그가 없습니다.</p>
+				)
+			}
+		</main>
+		<Footer />
+	</body>
+</html>
+
+<style>
+	.page-head {
+		margin-bottom: 2rem;
+		padding-bottom: 1.25rem;
+		border-bottom: 1px solid var(--border);
+	}
+	.kicker {
+		display: inline-block;
+		font-size: 0.78rem;
+		font-weight: 700;
+		letter-spacing: 0.12em;
+		color: var(--text-muted);
+		margin-bottom: 0.5rem;
+	}
+	.page-head h1 { margin-bottom: 0.25rem; font-size: 2.4rem; letter-spacing: -0.03em; }
+	.page-head p { margin: 0; color: var(--text-muted); }
+	.chips {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+	}
+	.chips li a {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.55rem 1rem;
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		background: var(--surface);
+		color: var(--text);
+		text-decoration: none;
+		font-size: 1rem;
+		transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+	}
+	.chips li a:hover {
+		border-color: rgba(var(--accent-rgb), 0.5);
+		color: var(--accent);
+		background: rgba(var(--accent-rgb), 0.06);
+		text-decoration: none;
+	}
+	.count {
+		font-size: 0.8rem;
+		color: var(--text-muted);
+		background: var(--surface-2);
+		border-radius: 999px;
+		padding: 0.05rem 0.5rem;
+	}
+	.empty { color: var(--text-muted); }
+</style>

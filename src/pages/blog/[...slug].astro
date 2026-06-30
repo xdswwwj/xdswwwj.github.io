@@ -6,37 +6,61 @@ export async function getStaticPaths() {
 	const posts = (await getCollection('blog')).sort(
 		(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
 	);
-	return posts.map((post, i) => ({
-		params: { slug: post.id },
-		props: {
-			post,
-			// newer post is at a lower index (desc sort)
-			newer: posts[i - 1] ?? null,
-			older: posts[i + 1] ?? null,
-		},
-	}));
+	return posts.map((post, i) => {
+		// Score other posts by shared tags (2 pts each) + same category (1 pt)
+		const tags = new Set(post.data.tags ?? []);
+		const related = posts
+			.filter((p) => p.id !== post.id)
+			.map((p) => {
+				const shared = (p.data.tags ?? []).filter((t) => tags.has(t)).length;
+				const score =
+					shared * 2 + (p.data.category === post.data.category ? 1 : 0);
+				return { p, score };
+			})
+			.filter((r) => r.score > 0)
+			.sort((a, b) => b.score - a.score || b.p.data.pubDate.valueOf() - a.p.data.pubDate.valueOf())
+			.slice(0, 3)
+			.map((r) => r.p);
+
+		return {
+			params: { slug: post.id },
+			props: {
+				post,
+				// newer post is at a lower index (desc sort)
+				newer: posts[i - 1] ?? null,
+				older: posts[i + 1] ?? null,
+				related,
+			},
+		};
+	});
 }
 type Props = {
 	post: CollectionEntry<'blog'>;
 	newer: CollectionEntry<'blog'> | null;
 	older: CollectionEntry<'blog'> | null;
+	related: CollectionEntry<'blog'>[];
 };
 
-const { post, newer, older } = Astro.props;
+const { post, newer, older, related } = Astro.props;
 const { Content, headings } = await render(post);
 
 // Korean-aware reading time: ~500 chars/min
 const text = post.body ?? '';
 const charCount = text.replace(/\s/g, '').length;
 const readingTime = Math.max(1, Math.round(charCount / 500));
+
+// Auto-generated OG image (falls back inside BaseHead if hero image set)
+const ogImage = post.data.heroImage ? undefined : `/og/${post.id}.png`;
 ---
 
 <BlogPost
 	{...post.data}
 	readingTime={readingTime}
 	headings={headings}
+	ogImage={ogImage}
 	newer={newer}
 	older={older}
+	related={related}
 >
 	<Content />
 </BlogPost>
