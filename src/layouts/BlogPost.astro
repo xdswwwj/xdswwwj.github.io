@@ -864,12 +864,20 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 						}
 						setActive(targets[idx].id);
 					};
-					recalc();
-					window.addEventListener('scroll', spy, { passive: true });
-					window.addEventListener('resize', () => {
+					const refresh = () => {
 						recalc();
 						spy();
-					});
+					};
+					recalc();
+					window.addEventListener('scroll', spy, { passive: true });
+					window.addEventListener('resize', refresh);
+					// Late layout shifts (mermaid diagrams, images, fonts) change
+					// heading positions after first paint — recalc when they settle.
+					window.addEventListener('load', refresh);
+					if ('ResizeObserver' in window) {
+						const ro = new ResizeObserver(refresh);
+						ro.observe(document.body);
+					}
 					spy();
 				}
 			})();
