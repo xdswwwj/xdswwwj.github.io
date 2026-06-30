@@ -12,6 +12,7 @@
 	--accent-hover: #4a42d8;
 	--accent-rgb: 91, 83, 240;
 	--accent-gradient: linear-gradient(135deg, #5b53f0 0%, #9b6cff 100%);
+	--on-accent: #ffffff;
 
 	--bg: #ffffff;
 	--surface: #ffffff;
@@ -37,6 +38,7 @@
 	--accent-hover: #45e082;
 	--accent-rgb: 30, 215, 96;
 	--accent-gradient: linear-gradient(135deg, #1ed760 0%, #4ce98a 100%);
+	--on-accent: #06140b;
 
 	--bg: #0a0c12;
 	--surface: #11141d;
@@ -64,6 +66,7 @@
 		--accent-hover: #45e082;
 		--accent-rgb: 30, 215, 96;
 		--accent-gradient: linear-gradient(135deg, #1ed760 0%, #4ce98a 100%);
+		--on-accent: #06140b;
 		--bg: #0a0c12;
 		--surface: #11141d;
 		--surface-2: #161a24;

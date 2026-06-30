@@ -161,13 +161,13 @@ const topics = [...new Set(allPosts.map((p) => p.data.category))].slice(0, 6);
 		font-size: 0.95rem;
 		font-weight: 600;
 		background: var(--accent-gradient);
-		color: #fff;
+		color: var(--on-accent);
 		border: 1px solid transparent;
 		box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.3);
 		transition: transform 0.1s ease, box-shadow 0.15s ease;
 	}
 	.btn:hover {
-		color: #fff;
+		color: var(--on-accent);
 		text-decoration: none;
 		transform: translateY(-2px);
 		box-shadow: 0 10px 28px rgba(var(--accent-rgb), 0.4);

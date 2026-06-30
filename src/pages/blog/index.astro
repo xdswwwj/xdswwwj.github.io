@@ -191,7 +191,7 @@ const categories = [...new Set(posts.map((p) => p.data.category))];
 	}
 	.filter:hover { color: var(--text); border-color: var(--accent); }
 	.filter.active {
-		color: #fff;
+		color: var(--on-accent);
 		background: var(--accent-gradient);
 		border-color: transparent;
 	}
