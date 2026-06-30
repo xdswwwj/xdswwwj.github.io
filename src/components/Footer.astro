@@ -10,6 +10,24 @@ const today = new Date();
 		<span>Astro로 제작</span>
 	</div>
 </footer>
+<button id="back-to-top" type="button" aria-label="맨 위로" title="맨 위로">
+	<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+		<path d="M12 19V5M5 12l7-7 7 7"></path>
+	</svg>
+</button>
+<script is:inline>
+	(() => {
+		const btn = document.getElementById('back-to-top');
+		if (!btn) return;
+		const toggle = () => btn.classList.toggle('show', window.scrollY > 400);
+		toggle();
+		window.addEventListener('scroll', toggle, { passive: true });
+		btn.addEventListener('click', () => {
+			const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+			window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+		});
+	})();
+</script>
 <style>
 	footer {
 		flex-shrink: 0;
@@ -29,4 +47,46 @@ const today = new Date();
 	.dot { color: var(--border); }
 	footer a { color: var(--text-muted); text-decoration: none; }
 	footer a:hover { color: var(--accent); }
+
+	#back-to-top {
+		position: fixed;
+		right: clamp(1rem, 4vw, 2rem);
+		bottom: clamp(1rem, 4vw, 2rem);
+		z-index: 60;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 44px;
+		height: 44px;
+		padding: 0;
+		border: 1px solid var(--border);
+		border-radius: 12px;
+		background: color-mix(in srgb, var(--surface) 85%, transparent);
+		backdrop-filter: saturate(180%) blur(8px);
+		-webkit-backdrop-filter: saturate(180%) blur(8px);
+		color: var(--text-muted);
+		cursor: pointer;
+		box-shadow: var(--box-shadow);
+		opacity: 0;
+		transform: translateY(12px) scale(0.9);
+		pointer-events: none;
+		transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+			color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+	}
+	#back-to-top.show {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+		pointer-events: auto;
+	}
+	#back-to-top:hover {
+		color: var(--accent);
+		border-color: var(--accent);
+		background: var(--glow);
+		transform: translateY(-2px) scale(1);
+	}
+	@media (prefers-reduced-motion: reduce) {
+		#back-to-top { transition: opacity 0.2s ease; transform: none; }
+		#back-to-top.show { transform: none; }
+		#back-to-top:hover { transform: none; }
+	}
 </style>

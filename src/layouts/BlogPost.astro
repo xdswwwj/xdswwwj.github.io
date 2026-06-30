@@ -445,31 +445,6 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 				.adjacent .to-older.solo { grid-column: 1; }
 			}
 
-			/* Scroll to top */
-			#to-top {
-				position: fixed;
-				right: 1.5rem;
-				bottom: 1.5rem;
-				width: 44px;
-				height: 44px;
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				border: 1px solid var(--border);
-				border-radius: 12px;
-				background: color-mix(in srgb, var(--surface) 85%, transparent);
-				backdrop-filter: blur(8px);
-				color: var(--text-muted);
-				cursor: pointer;
-				opacity: 0;
-				visibility: hidden;
-				transform: translateY(8px);
-				transition: opacity 0.2s ease, transform 0.2s ease, color 0.15s ease, border-color 0.15s ease;
-				z-index: 40;
-			}
-			#to-top.show { opacity: 1; visibility: visible; transform: translateY(0); }
-			#to-top:hover { color: var(--accent); border-color: var(--accent); }
-
 			/* Reading progress bar */
 			#read-progress {
 				position: fixed;
@@ -736,21 +711,11 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 			}
 		</main>
 		<Footer />
-		<button id="to-top" type="button" aria-label="맨 위로">
-			<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-				<path d="M12 19V5M5 12l7-7 7 7"></path>
-			</svg>
-		</button>
 		<script is:inline>
 			(() => {
-				const btn = document.getElementById('to-top');
 				const bar = document.getElementById('read-progress');
 
 				const onScroll = () => {
-					if (btn) {
-						if (window.scrollY > 400) btn.classList.add('show');
-						else btn.classList.remove('show');
-					}
 					if (bar) {
 						const h = document.documentElement;
 						const max = h.scrollHeight - h.clientHeight;
@@ -760,12 +725,6 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 				window.addEventListener('scroll', onScroll, { passive: true });
 				window.addEventListener('resize', onScroll);
 				onScroll();
-
-				if (btn) {
-					btn.addEventListener('click', () => {
-						window.scrollTo({ top: 0, behavior: 'smooth' });
-					});
-				}
 
 				// Code block toolbars
 				const copyIcon =
