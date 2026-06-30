@@ -6,8 +6,11 @@ import Footer from '../components/Footer.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import Header from '../components/Header.astro';
 
+type Heading = { depth: number; slug: string; text: string };
+
 type Props = CollectionEntry<'blog'>['data'] & {
 	readingTime?: number;
+	headings?: Heading[];
 	newer?: CollectionEntry<'blog'> | null;
 	older?: CollectionEntry<'blog'> | null;
 };
@@ -20,11 +23,13 @@ const {
 	heroImage,
 	category,
 	readingTime,
+	headings = [],
 	newer,
 	older,
 } = Astro.props;
 
 const isArticle = readingTime !== undefined;
+const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 ---
 
 <html lang="ko">
@@ -415,6 +420,70 @@ const isArticle = readingTime !== undefined;
 			@media (max-width: 720px) {
 				.prose :global(.heading-anchor) { display: none; }
 			}
+
+			/* ── Floating table of contents ──────────────────────── */
+			.toc {
+				display: none;
+			}
+			@media (min-width: 1200px) {
+				.toc {
+					display: block;
+					position: fixed;
+					top: 50%;
+					transform: translateY(-50%);
+					left: max(1.5rem, calc(50vw - 360px - 24px - 220px));
+					width: 220px;
+					max-height: 70vh;
+					overflow-y: auto;
+					padding-right: 0.5rem;
+					z-index: 30;
+				}
+				.toc-title {
+					margin: 0 0 0.75rem;
+					font-size: 0.72rem;
+					font-weight: 700;
+					text-transform: uppercase;
+					letter-spacing: 0.1em;
+					color: var(--text-muted);
+				}
+				.toc ul {
+					list-style: none;
+					margin: 0;
+					padding: 0;
+					border-left: 1px solid var(--border);
+				}
+				.toc li {
+					margin: 0;
+				}
+				.toc-d3 a {
+					padding-left: 1.6rem;
+					font-size: 0.82rem;
+				}
+				.toc a {
+					display: block;
+					padding: 0.32rem 0 0.32rem 0.9rem;
+					margin-left: -1px;
+					border-left: 2px solid transparent;
+					font-size: 0.86rem;
+					line-height: 1.4;
+					color: var(--text-muted);
+					text-decoration: none;
+					transition: color 0.15s ease, border-color 0.15s ease;
+				}
+				.toc a:hover {
+					color: var(--text);
+					text-decoration: none;
+				}
+				.toc a.active {
+					color: var(--accent);
+					border-left-color: var(--accent);
+					font-weight: 600;
+				}
+			}
+			/* Hide TOC when viewport can't fit it beside the content */
+			@media (min-width: 1200px) and (max-height: 480px) {
+				.toc { position: absolute; }
+			}
 		</style>
 	</head>
 
@@ -422,6 +491,22 @@ const isArticle = readingTime !== undefined;
 		{isArticle && <div id="read-progress"></div>}
 		<Header />
 		<main>
+			{
+				isArticle && toc.length > 1 && (
+					<nav class="toc" aria-label="목차">
+						<p class="toc-title">목차</p>
+						<ul>
+							{toc.map((h) => (
+								<li class={`toc-d${h.depth}`}>
+									<a href={`#${h.slug}`} data-slug={h.slug}>
+										{h.text}
+									</a>
+								</li>
+							))}
+						</ul>
+					</nav>
+				)
+			}
 			<article>
 				<div class="hero-image">
 					{heroImage && <Image width={1020} height={510} src={heroImage} alt="" />}
@@ -558,6 +643,44 @@ const isArticle = readingTime !== undefined;
 						a.textContent = '#';
 						h.appendChild(a);
 					});
+
+				// TOC scroll spy
+				const tocLinks = [...document.querySelectorAll('.toc a[data-slug]')];
+				if (tocLinks.length) {
+					const linkBySlug = new Map(
+						tocLinks.map((a) => [a.dataset.slug, a])
+					);
+					const targets = tocLinks
+						.map((a) => document.getElementById(a.dataset.slug))
+						.filter(Boolean);
+					let current = null;
+					const setActive = (slug) => {
+						if (slug === current) return;
+						current = slug;
+						tocLinks.forEach((a) =>
+							a.classList.toggle('active', a.dataset.slug === slug)
+						);
+					};
+					const spy = () => {
+						const doc = document.documentElement;
+						// At page bottom, force-activate the last heading
+						if (
+							window.innerHeight + window.scrollY >=
+							doc.scrollHeight - 2
+						) {
+							setActive(targets[targets.length - 1].id);
+							return;
+						}
+						let active = targets[0];
+						for (const t of targets) {
+							if (t.getBoundingClientRect().top <= 120) active = t;
+							else break;
+						}
+						if (active) setActive(active.id);
+					};
+					window.addEventListener('scroll', spy, { passive: true });
+					spy();
+				}
 			})();
 		</script>
 		<script>
