@@ -3,8 +3,7 @@ import { glob } from 'astro/loaders';
 import { z } from 'astro/zod';
 
 const blog = defineCollection({
-	// Files starting with _ (e.g. _essay-template.md) are templates: not built, not listed.
-	loader: glob({ base: './src/content/blog', pattern: '**/[^_]*.{md,mdx}' }),
+	loader: glob({ base: './src/content/blog', pattern: '**/*.{md,mdx}' }),
 	schema: ({ image }) =>
 		z.object({
 			title: z.string(),

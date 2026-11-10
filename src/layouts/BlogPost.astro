@@ -44,6 +44,9 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 
 // Essay only: a paragraph that is nothing but one <strong> becomes a pull line.
 // Done at build time so it works without JS. Default posts keep the plain <slot />.
+// Limitation: the body is rendered to an HTML string and re-inserted with set:html,
+// so interactive components (client:* islands) inside an .mdx essay may lose their
+// hydration scripts. Write essays (layout: essay) as plain .md only.
 const essayBody = isEssay
 	? (await Astro.slots.render('default')).replace(
 			/<p><strong>((?:(?!<\/?strong[\s>]|<\/?p[\s>])[\s\S])*?)<\/strong><\/p>/g,
