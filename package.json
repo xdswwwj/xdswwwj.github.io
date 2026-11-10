@@ -12,7 +12,8 @@
     "preview": "astro preview",
     "astro": "astro",
     "new-post": "node scripts/new-post.mjs",
-    "publish-post": "node scripts/publish-post.mjs"
+    "publish-post": "node scripts/publish-post.mjs",
+    "test:draft": "node scripts/test-draft-flow.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "^7.0.0",

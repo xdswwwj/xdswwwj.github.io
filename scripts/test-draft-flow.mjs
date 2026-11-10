@@ -1,0 +1,313 @@
+#!/usr/bin/env node
+// 초안 생성 → 빌드 제외 → 발행 → 빌드 노출 및 예외 입력 통합 시험
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const blogDir = path.join(repoRoot, 'src', 'content', 'blog');
+const distDir = path.join(repoRoot, 'dist');
+
+const TEST_DATE = '2026-11-11';
+const TEST_SLUG = 'qa-draft-test';
+const TEST_ID = `${TEST_DATE}-${TEST_SLUG}`;
+const testPostPath = path.join(blogDir, `${TEST_ID}.md`);
+const testPostRel = path.relative(repoRoot, testPostPath);
+
+const INPUT_SLUG = 'qa-draft-input-test';
+const INPUT_ID = `${TEST_DATE}-${INPUT_SLUG}`;
+const inputPostPath = path.join(blogDir, `${INPUT_ID}.md`);
+
+const results = [];
+
+function record(name, passed, detail = '') {
+	results.push({ name, passed, detail });
+	const icon = passed ? 'PASS' : 'FAIL';
+	console.log(`[${icon}] ${name}${detail ? ` — ${detail}` : ''}`);
+}
+
+function runCmd(cmd, args) {
+	return spawnSync(cmd, args, {
+		cwd: repoRoot,
+		encoding: 'utf8',
+		env: { ...process.env, INIT_CWD: repoRoot },
+	});
+}
+
+function collectFiles(dir, predicate = () => true) {
+	if (!existsSync(dir)) return [];
+	const out = [];
+	for (const entry of readdirSync(dir, { withFileTypes: true })) {
+		const full = path.join(dir, entry.name);
+		if (entry.isDirectory()) {
+			out.push(...collectFiles(full, predicate));
+		} else if (entry.isFile() && predicate(full)) {
+			out.push(full);
+		}
+	}
+	return out;
+}
+
+function todayString() {
+	const now = new Date();
+	return [
+		now.getFullYear(),
+		String(now.getMonth() + 1).padStart(2, '0'),
+		String(now.getDate()).padStart(2, '0'),
+	].join('-');
+}
+
+let tmpDir = null;
+
+try {
+	tmpDir = mkdtempSync(path.join(os.tmpdir(), 'qa-draft-test-'));
+	rmSync(testPostPath, { force: true });
+	rmSync(inputPostPath, { force: true });
+
+	// 1. new-post 로 초안 생성
+	const step1 = runCmd('npm', ['run', 'new-post', '--', '--date', TEST_DATE, '--slug', TEST_SLUG]);
+	const createdExists = existsSync(testPostPath);
+	const createdContent = createdExists ? readFileSync(testPostPath, 'utf8') : '';
+	const hasDraftTrue = /^draft:\s*true\s*$/m.test(createdContent);
+	const hasPubDate = new RegExp(`^pubDate:\\s*["']?${TEST_DATE}["']?\\s*$`, 'm').test(createdContent);
+	const hasHeadings =
+		createdContent.includes('## 소제목 1') &&
+		createdContent.includes('## 소제목 2') &&
+		createdContent.includes('## 소제목 3');
+
+	record(
+		'1. new-post 초안 생성 및 머리말·소제목 확인',
+		step1.status === 0 && createdExists && hasDraftTrue && hasPubDate && hasHeadings,
+		step1.status !== 0
+			? `exit=${step1.status}`
+			: `exists=${createdExists}, draft=${hasDraftTrue}, pubDate=${hasPubDate}, headings=${hasHeadings}`,
+	);
+
+	// 2. 같은 명령 재실행 시 실패 및 내용 보존
+	if (createdExists) {
+		const sentinel = `${createdContent}\n<!-- sentinel-keep -->\n`;
+		writeFileSync(testPostPath, sentinel, 'utf8');
+		const step2 = runCmd('npm', ['run', 'new-post', '--', '--date', TEST_DATE, '--slug', TEST_SLUG]);
+		const afterContent = readFileSync(testPostPath, 'utf8');
+		record(
+			'2. 같은 파일 재생성 시 덮어쓰지 않고 실패',
+			step2.status !== 0 && afterContent === sentinel,
+			`exit=${step2.status}, preserved=${afterContent === sentinel}`,
+		);
+		// 원래 내용 복원
+		writeFileSync(testPostPath, createdContent, 'utf8');
+	} else {
+		record('2. 같은 파일 재생성 시 덮어쓰지 않고 실패', false, '1단계 파일이 생성되지 않음');
+	}
+
+	// 3. 초안 상태에서 npm run build → 초안이 결과물에 없어야 함 + 기존 글은 유지
+	// tags 경로(dist/tags/**)까지 검증하기 위해 초안에 시험용 태그를 넣는다.
+	if (createdExists) {
+		const withTag = createdContent.replace(/^tags:\s*\[\]\s*$/m, 'tags: ["qa-draft-tag"]');
+		writeFileSync(testPostPath, withTag, 'utf8');
+	}
+	rmSync(distDir, { recursive: true, force: true });
+	const buildDraft = runCmd('npm', ['run', 'build']);
+	record('3-a. 초안 상태에서 npm run build 성공', buildDraft.status === 0, `exit=${buildDraft.status}`);
+
+	if (buildDraft.status === 0) {
+		const blogIndex = existsSync(path.join(distDir, 'blog', 'index.html'))
+			? readFileSync(path.join(distDir, 'blog', 'index.html'), 'utf8')
+			: '';
+		const rssXml = existsSync(path.join(distDir, 'rss.xml'))
+			? readFileSync(path.join(distDir, 'rss.xml'), 'utf8')
+			: '';
+		const sitemapFiles = collectFiles(distDir, (f) => /^sitemap-.*\.xml$/.test(path.basename(f)));
+		const sitemapHit = sitemapFiles.some((f) => readFileSync(f, 'utf8').includes(TEST_SLUG));
+		const categoryFiles = collectFiles(path.join(distDir, 'categories'));
+		const categoryHit = categoryFiles.some((f) => readFileSync(f, 'utf8').includes(TEST_SLUG));
+		const tagFiles = collectFiles(path.join(distDir, 'tags'));
+		const tagHit = tagFiles.some(
+			(f) => readFileSync(f, 'utf8').includes(TEST_SLUG) || f.includes('qa-draft-tag'),
+		);
+		const ogExists = existsSync(path.join(distDir, 'og', `${TEST_ID}.png`));
+		const postDirExists = existsSync(path.join(distDir, 'blog', TEST_ID));
+
+		const leakedLocations = [];
+		if (blogIndex.includes(TEST_SLUG)) leakedLocations.push('dist/blog/index.html');
+		if (rssXml.includes(TEST_SLUG)) leakedLocations.push('dist/rss.xml');
+		if (sitemapHit) leakedLocations.push('dist/sitemap-*.xml');
+		if (categoryHit) leakedLocations.push('dist/categories/**');
+		if (tagHit) leakedLocations.push('dist/tags/**');
+		if (ogExists) leakedLocations.push(`dist/og/${TEST_ID}.png`);
+		if (postDirExists) leakedLocations.push(`dist/blog/${TEST_ID}/`);
+
+		record(
+			'3-b. 운영 빌드 결과물에서 초안 제외 (목록·rss·sitemap·카테고리·태그·og·개별글)',
+			leakedLocations.length === 0,
+			leakedLocations.length === 0 ? '모든 경로에서 제외됨' : `노출된 곳: ${leakedLocations.join(', ')}`,
+		);
+
+		// draft 칸이 아예 없는 기존 글(welcome.md)은 계속 공개되어야 함
+		const existingPostOk =
+			existsSync(path.join(distDir, 'blog', 'welcome', 'index.html')) &&
+			blogIndex.includes('/blog/welcome') &&
+			rssXml.includes('/blog/welcome/');
+		record(
+			'3-c. draft 칸이 없는 기존 글(welcome)은 계속 공개됨',
+			existingPostOk,
+			`welcome page=${existsSync(path.join(distDir, 'blog', 'welcome', 'index.html'))}`,
+		);
+	} else {
+		record('3-b. 운영 빌드 결과물에서 초안 제외', false, '빌드 실패로 확인 불가');
+		record('3-c. draft 칸이 없는 기존 글(welcome)은 계속 공개됨', false, '빌드 실패로 확인 불가');
+	}
+
+	// 4. publish-post 실행 → draft: false, pubDate: 오늘
+	const today = todayString();
+	const step4 = runCmd('npm', ['run', 'publish-post', '--', testPostRel]);
+	const publishedContent = existsSync(testPostPath) ? readFileSync(testPostPath, 'utf8') : '';
+	const isDraftFalse = /^draft:\s*false\s*$/m.test(publishedContent);
+	const isPubDateToday = new RegExp(`^pubDate:\\s*["']?${today}["']?\\s*$`, 'm').test(publishedContent);
+
+	record(
+		'4. publish-post 실행 시 draft: false 및 pubDate 오늘로 변경',
+		step4.status === 0 && isDraftFalse && isPubDateToday,
+		`exit=${step4.status}, draftFalse=${isDraftFalse}, pubDateToday=${isPubDateToday} (${today})`,
+	);
+
+	// 5. 발행 후 다시 npm run build → 목록·rss·sitemap·og·폴더에 나타남
+	rmSync(distDir, { recursive: true, force: true });
+	const buildPublished = runCmd('npm', ['run', 'build']);
+	if (buildPublished.status === 0) {
+		const blogIndex = existsSync(path.join(distDir, 'blog', 'index.html'))
+			? readFileSync(path.join(distDir, 'blog', 'index.html'), 'utf8')
+			: '';
+		const rssXml = existsSync(path.join(distDir, 'rss.xml'))
+			? readFileSync(path.join(distDir, 'rss.xml'), 'utf8')
+			: '';
+		const sitemapFiles = collectFiles(distDir, (f) => /^sitemap-.*\.xml$/.test(path.basename(f)));
+		const inBlogIndex = blogIndex.includes(TEST_ID);
+		const inRss = rssXml.includes(TEST_ID);
+		const inSitemap = sitemapFiles.some((f) => readFileSync(f, 'utf8').includes(TEST_ID));
+		const ogExists = existsSync(path.join(distDir, 'og', `${TEST_ID}.png`));
+		const postPageExists = existsSync(path.join(distDir, 'blog', TEST_ID, 'index.html'));
+
+		record(
+			'5. 발행 후 빌드 결과물(목록·rss·sitemap·og·개별글)에 노출',
+			inBlogIndex && inRss && inSitemap && ogExists && postPageExists,
+			`blogIndex=${inBlogIndex}, rss=${inRss}, sitemap=${inSitemap}, og=${ogExists}, page=${postPageExists}`,
+		);
+	} else {
+		record('5. 발행 후 빌드 결과물에 노출', false, `빌드 실패 exit=${buildPublished.status}`);
+	}
+
+	// 6. 깨질 만한 경우(예외 입력) 시험
+	const badDate1 = runCmd('npm', ['run', 'new-post', '--', '--date', '2026-1-1', '--slug', 'bad-date']);
+	const badDate2 = runCmd('npm', ['run', 'new-post', '--', '--date', '2026-02-30', '--slug', 'bad-date']);
+	record(
+		'6-a. 잘못된 --date 형식(2026-1-1, 2026-02-30) 거부',
+		badDate1.status !== 0 && badDate2.status !== 0,
+		`2026-1-1 exit=${badDate1.status}, 2026-02-30 exit=${badDate2.status}`,
+	);
+
+	const badSlugs = ['has space', 'UpperCase', '한글슬러그', '-leading', 'trailing-', 'double--dash', ''];
+	const slugChecks = badSlugs.map((s) => {
+		const res = runCmd('npm', ['run', 'new-post', '--', '--date', TEST_DATE, '--slug', s]);
+		return { slug: s, failed: res.status !== 0 };
+	});
+	record(
+		'6-b. 잘못된 --slug(공백·대문자·한글·하이픈 오류·빈 값) 거부',
+		slugChecks.every((c) => c.failed),
+		slugChecks.map((c) => `${JSON.stringify(c.slug)}:${c.failed ? 'OK' : 'NG'}`).join(', '),
+	);
+
+	const missingInput = runCmd('npm', [
+		'run',
+		'new-post',
+		'--',
+		'--date',
+		TEST_DATE,
+		'--slug',
+		'missing-input-slug',
+		'--input',
+		path.join(tmpDir, 'no-such-file.md'),
+	]);
+	record(
+		'6-c. --input 에 없는 파일 지정 시 실패',
+		missingInput.status !== 0 && !existsSync(path.join(blogDir, `${TEST_DATE}-missing-input-slug.md`)),
+		`exit=${missingInput.status}`,
+	);
+
+	// --input 정상 재료 파일 및 긴 글/주석 닫힘(-->) 이스케이프 확인
+	const materialFile = path.join(tmpDir, 'material.md');
+	const longLine = '가'.repeat(5000);
+	writeFileSync(materialFile, `재료 첫 줄\n위험한 주석 닫기 --> 포함\n${longLine}\n`, 'utf8');
+	const withInput = runCmd('npm', [
+		'run',
+		'new-post',
+		'--',
+		'--date',
+		TEST_DATE,
+		'--slug',
+		INPUT_SLUG,
+		'--input',
+		materialFile,
+	]);
+	const inputPostContent = existsSync(inputPostPath) ? readFileSync(inputPostPath, 'utf8') : '';
+	const inputCommentSafe =
+		inputPostContent.includes('<!-- 재료') &&
+		inputPostContent.includes('-- >') &&
+		inputPostContent.includes(longLine);
+	record(
+		'6-d. --input 긴 재료 파일 첨부 및 --> 주석 탈출 방어',
+		withInput.status === 0 && inputCommentSafe,
+		`exit=${withInput.status}, commentSafe=${inputCommentSafe}`,
+	);
+
+	// publish-post 예외: 없는 파일, 머리말 없는 파일, pubDate 없는 파일
+	const pubMissing = runCmd('npm', ['run', 'publish-post', '--', path.join(tmpDir, 'missing.md')]);
+	const noFrontmatterFile = path.join(tmpDir, 'no-frontmatter.md');
+	writeFileSync(noFrontmatterFile, '# 머리말이 없는 일반 마크다운 파일\n본문입니다.\n', 'utf8');
+	const pubNoFrontmatter = runCmd('npm', ['run', 'publish-post', '--', noFrontmatterFile]);
+
+	const noPubDateFile = path.join(tmpDir, 'no-pubdate.md');
+	writeFileSync(noPubDateFile, '---\ntitle: "제목"\ndraft: true\n---\n본문\n', 'utf8');
+	const pubNoPubDate = runCmd('npm', ['run', 'publish-post', '--', noPubDateFile]);
+
+	const pubNoArg = runCmd('npm', ['run', 'publish-post']);
+
+	record(
+		'6-e. publish-post 에 인자 없음·없는 파일·머리말 없는 파일·pubDate 없는 파일 실패',
+		pubNoArg.status !== 0 &&
+			pubMissing.status !== 0 &&
+			pubNoFrontmatter.status !== 0 &&
+			pubNoPubDate.status !== 0,
+		`noArg=${pubNoArg.status}, missing=${pubMissing.status}, noFrontmatter=${pubNoFrontmatter.status}, noPubDate=${pubNoPubDate.status}`,
+	);
+
+	// 쓰기 권한이 없는 파일(0444)에 publish-post 실행 시 실패 확인
+	const roFile = path.join(tmpDir, 'readonly-post.md');
+	writeFileSync(roFile, `---\ntitle: "읽기전용"\npubDate: "${TEST_DATE}"\ndraft: true\n---\n본문\n`, {
+		encoding: 'utf8',
+		mode: 0o444,
+	});
+	const pubReadOnly = runCmd('npm', ['run', 'publish-post', '--', roFile]);
+	record(
+		'6-f. 쓰기 권한 없는 파일(0444) publish-post 실행 시 실패',
+		pubReadOnly.status !== 0,
+		`exit=${pubReadOnly.status}`,
+	);
+} finally {
+	// 만든 시험 글과 임시 폴더, dist 정리
+	rmSync(testPostPath, { force: true });
+	rmSync(inputPostPath, { force: true });
+	rmSync(distDir, { recursive: true, force: true });
+	if (tmpDir) rmSync(tmpDir, { recursive: true, force: true });
+}
+
+const cleanCheck = !existsSync(testPostPath) && !existsSync(inputPostPath) && !existsSync(distDir);
+record('7. 시험 종료 후 시험 글 및 dist 정리 확인', cleanCheck, `clean=${cleanCheck}`);
+
+const failed = results.filter((r) => !r.passed);
+console.log(`\n총 ${results.length}개 항목 중 ${results.length - failed.length}개 통과, ${failed.length}개 실패`);
+if (failed.length > 0) {
+	process.exit(1);
+}
