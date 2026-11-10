@@ -25,6 +25,9 @@ const {
 	heroImage,
 	category,
 	tags = [],
+	layout = 'default',
+	summary,
+	closingQuestion,
 	readingTime,
 	headings = [],
 	ogImage,
@@ -33,6 +36,7 @@ const {
 	related = [],
 } = Astro.props;
 
+const isEssay = layout === 'essay';
 const isArticle = readingTime !== undefined;
 const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 ---
@@ -602,6 +606,46 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 				.toc { position: absolute; }
 			}
 		</style>
+		<style is:global>
+			article.essay .title h1 {
+				font-size: clamp(2.5rem, 7vw, 4.5rem);
+				font-weight: 300;
+				line-height: 1.25;
+				overflow-wrap: anywhere;
+			}
+			article.essay .title .essay-lead {
+				margin: 1.5rem 0 0;
+				font-size: clamp(1.1rem, 2.5vw, 1.35rem);
+				line-height: 1.8;
+				color: var(--text-muted);
+			}
+			article.essay .prose h2 {
+				margin: 4rem 0 1.5rem;
+				padding-bottom: 0;
+				border-bottom: none;
+				font-size: clamp(1.35rem, 3vw, 1.65rem);
+			}
+			article.essay .prose > p.essay-pull {
+				margin: 3rem 0;
+				font-size: clamp(1.4rem, 4vw, 1.9rem);
+				line-height: 1.6;
+				overflow-wrap: anywhere;
+			}
+			article.essay .essay-closing {
+				margin-top: 4rem;
+				padding: clamp(1.25rem, 4vw, 2rem);
+				border-left: 3px solid var(--accent);
+				border-radius: 0 12px 12px 0;
+				background: rgba(var(--accent-rgb), 0.08);
+				overflow-wrap: anywhere;
+			}
+			article.essay .essay-closing p {
+				margin: 0;
+				font-size: clamp(1.1rem, 3vw, 1.35rem);
+				font-weight: 600;
+				line-height: 1.8;
+			}
+		</style>
 	</head>
 
 	<body>
@@ -624,7 +668,7 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 					</nav>
 				)
 			}
-			<article>
+			<article class={isEssay ? 'essay' : undefined}>
 				<div class="hero-image">
 					{heroImage && <Image width={1020} height={510} src={heroImage} alt="" />}
 				</div>
@@ -654,6 +698,7 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 							}
 						</div>
 						<h1>{title}</h1>
+						{isEssay && summary && <p class="essay-lead">{summary}</p>}
 						{
 							tags.length > 0 && (
 								<ul class="tag-list">
@@ -668,6 +713,7 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 						<hr />
 					</div>
 					<slot />
+					{isEssay && closingQuestion && <aside class="essay-closing" aria-label="끝 질문"><p>{closingQuestion}</p></aside>}
 				</div>
 			</article>
 			{
@@ -713,6 +759,17 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 		<Footer />
 		<script is:inline>
 			(() => {
+				if (document.querySelector('article.essay')) {
+					document.querySelectorAll('article.essay .prose > p').forEach((p) => {
+						const nodes = [...p.childNodes].filter((node) =>
+							node.nodeType !== Node.TEXT_NODE || node.textContent.trim()
+						);
+						if (nodes.length === 1 && nodes[0].nodeName === 'STRONG') {
+							p.classList.add('essay-pull');
+						}
+					});
+				}
+
 				const bar = document.getElementById('read-progress');
 
 				const onScroll = () => {

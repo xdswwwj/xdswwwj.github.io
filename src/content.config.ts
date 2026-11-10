@@ -14,6 +14,9 @@ const blog = defineCollection({
 			heroImage: z.optional(image()),
 			category: z.string(),
 			tags: z.array(z.string()).optional().default([]),
+			layout: z.enum(['default', 'essay']).optional().default('default'),
+			summary: z.string().optional(),
+			closingQuestion: z.string().optional(),
 		}),
 });
 
