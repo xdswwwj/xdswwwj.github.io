@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 // 초안 생성 → 빌드 제외 → 발행 → 빌드 노출 및 예외 입력 통합 시험
-import { spawnSync } from 'node:child_process';
+// - 빌드 결과물은 임시 폴더(--outDir)에 만든다. 저장소의 dist/ 는 건드리지 않는다.
+// - 시험 글 두 개(2026-11-11-qa-draft-*.md)는 src/content/blog 에 잠깐 쓴다(빌드에 넣어야 하므로).
+//   끝나거나 Ctrl+C(SIGINT)·SIGTERM 으로 멈춰도 지운다. .gitignore 에도 넣어 커밋에 섞이지 않게 했다.
+import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -8,7 +11,8 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const blogDir = path.join(repoRoot, 'src', 'content', 'blog');
-const distDir = path.join(repoRoot, 'dist');
+const realDistDir = path.join(repoRoot, 'dist');
+let distDir = null; // 각 빌드의 임시 결과물 폴더 (tmpDir 아래)
 
 const TEST_DATE = '2026-11-11';
 const TEST_SLUG = 'qa-draft-test';
@@ -28,12 +32,37 @@ function record(name, passed, detail = '') {
 	console.log(`[${icon}] ${name}${detail ? ` — ${detail}` : ''}`);
 }
 
+// 비동기로 돌려야 Ctrl+C 를 받았을 때 바로 정리 처리기가 돈다(spawnSync 중에는 처리기가 못 돈다).
 function runCmd(cmd, args) {
-	return spawnSync(cmd, args, {
-		cwd: repoRoot,
-		encoding: 'utf8',
-		env: { ...process.env, INIT_CWD: repoRoot },
+	return new Promise((resolve) => {
+		const child = spawn(cmd, args, { cwd: repoRoot, env: { ...process.env, INIT_CWD: repoRoot } });
+		let stdout = '';
+		let stderr = '';
+		child.stdout.on('data', (d) => (stdout += d));
+		child.stderr.on('data', (d) => (stderr += d));
+		child.on('error', (err) => resolve({ status: null, stdout, stderr: stderr + String(err) }));
+		child.on('close', (status) => resolve({ status, stdout, stderr }));
 	});
+}
+
+// 임시 폴더에 빌드한다. 저장소의 dist/ 는 그대로 둔다.
+let buildCount = 0;
+function runBuild() {
+	buildCount += 1;
+	distDir = path.join(tmpDir, `dist-${buildCount}`);
+	return runCmd('npm', ['run', 'build', '--', '--outDir', distDir]);
+}
+
+// 저장소 dist/ 가 시험 전후로 같은지 비교하기 위한 지문 (파일 경로·크기·수정 시각)
+function distSignature() {
+	if (!existsSync(realDistDir)) return 'none';
+	return collectFiles(realDistDir)
+		.map((f) => {
+			const st = statSync(f);
+			return `${path.relative(realDistDir, f)}:${st.size}:${st.mtimeMs}`;
+		})
+		.sort()
+		.join('\n');
 }
 
 function collectFiles(dir, predicate = () => true) {
@@ -61,21 +90,40 @@ function todayString() {
 
 let tmpDir = null;
 
+function cleanup() {
+	rmSync(testPostPath, { force: true });
+	rmSync(inputPostPath, { force: true });
+	if (tmpDir) rmSync(tmpDir, { recursive: true, force: true });
+}
+
+for (const signal of ['SIGINT', 'SIGTERM']) {
+	process.on(signal, () => {
+		cleanup();
+		console.error(`\n${signal} 를 받아 멈춥니다. 시험 글과 임시 폴더는 지웠습니다.`);
+		process.exit(130);
+	});
+}
+
+if (existsSync(realDistDir)) {
+	console.log('알림: 저장소에 dist/ 가 있습니다. 이 시험은 dist/ 를 건드리지 않습니다(임시 폴더에 빌드).');
+}
+const distBefore = distSignature();
+
 try {
 	tmpDir = mkdtempSync(path.join(os.tmpdir(), 'qa-draft-test-'));
 	rmSync(testPostPath, { force: true });
 	rmSync(inputPostPath, { force: true });
 
 	// 1. new-post 로 초안 생성
-	const step1 = runCmd('npm', ['run', 'new-post', '--', '--date', TEST_DATE, '--slug', TEST_SLUG]);
+	const step1 = await runCmd('npm', ['run', 'new-post', '--', '--date', TEST_DATE, '--slug', TEST_SLUG]);
 	const createdExists = existsSync(testPostPath);
 	const createdContent = createdExists ? readFileSync(testPostPath, 'utf8') : '';
 	const hasDraftTrue = /^draft:\s*true\s*$/m.test(createdContent);
 	const hasPubDate = new RegExp(`^pubDate:\\s*["']?${TEST_DATE}["']?\\s*$`, 'm').test(createdContent);
 	const hasHeadings =
-		createdContent.includes('## 소제목 1') &&
-		createdContent.includes('## 소제목 2') &&
-		createdContent.includes('## 소제목 3');
+		createdContent.includes('## TODO: 소제목 1') &&
+		createdContent.includes('## TODO: 소제목 2') &&
+		createdContent.includes('## TODO: 소제목 3');
 
 	record(
 		'1. new-post 초안 생성 및 머리말·소제목 확인',
@@ -89,7 +137,7 @@ try {
 	if (createdExists) {
 		const sentinel = `${createdContent}\n<!-- sentinel-keep -->\n`;
 		writeFileSync(testPostPath, sentinel, 'utf8');
-		const step2 = runCmd('npm', ['run', 'new-post', '--', '--date', TEST_DATE, '--slug', TEST_SLUG]);
+		const step2 = await runCmd('npm', ['run', 'new-post', '--', '--date', TEST_DATE, '--slug', TEST_SLUG]);
 		const afterContent = readFileSync(testPostPath, 'utf8');
 		record(
 			'2. 같은 파일 재생성 시 덮어쓰지 않고 실패',
@@ -108,8 +156,7 @@ try {
 		const withTag = createdContent.replace(/^tags:\s*\[\]\s*$/m, 'tags: ["qa-draft-tag"]');
 		writeFileSync(testPostPath, withTag, 'utf8');
 	}
-	rmSync(distDir, { recursive: true, force: true });
-	const buildDraft = runCmd('npm', ['run', 'build']);
+	const buildDraft = await runBuild();
 	record('3-a. 초안 상태에서 npm run build 성공', buildDraft.status === 0, `exit=${buildDraft.status}`);
 
 	if (buildDraft.status === 0) {
@@ -163,7 +210,7 @@ try {
 	// 4-a. TODO: 자리 표시가 남은 채로는 발행이 거부되고 파일이 그대로여야 함
 	const today = todayString();
 	const beforeRefuse = existsSync(testPostPath) ? readFileSync(testPostPath, 'utf8') : '';
-	const refuse = runCmd('npm', ['run', 'publish-post', '--', testPostRel]);
+	const refuse = await runCmd('npm', ['run', 'publish-post', '--', testPostRel]);
 	const afterRefuse = existsSync(testPostPath) ? readFileSync(testPostPath, 'utf8') : '';
 	record(
 		'4-a. TODO: 자리 표시가 남아 있으면 publish-post 거부 (파일 그대로)',
@@ -171,15 +218,34 @@ try {
 		`exit=${refuse.status}, unchanged=${afterRefuse === beforeRefuse}`,
 	);
 
-	// 4. 자리 표시를 채운 뒤 publish-post 실행 → draft: false, pubDate: 오늘
+	// 4-b. 머리말만 채우고 소제목은 "## 소제목 N" 그대로(TODO: 만 지움)여도 거부되어야 함
+	if (existsSync(testPostPath)) {
+		const frontOnly = readFileSync(testPostPath, 'utf8')
+			.replace(/"TODO: [^"]*"/g, '"QA 시험 값"')
+			.replace(/^## TODO: (소제목 \d)$/gm, '## $1');
+		writeFileSync(testPostPath, frontOnly, 'utf8');
+	}
+	const beforeHeadingRefuse = existsSync(testPostPath) ? readFileSync(testPostPath, 'utf8') : '';
+	const headingRefuse = await runCmd('npm', ['run', 'publish-post', '--', testPostRel]);
+	const afterHeadingRefuse = existsSync(testPostPath) ? readFileSync(testPostPath, 'utf8') : '';
+	record(
+		'4-b. 머리말만 채우고 소제목(## 소제목 N)이 남아 있으면 publish-post 거부 (파일 그대로)',
+		headingRefuse.status !== 0 &&
+			!beforeHeadingRefuse.includes('TODO:') &&
+			/^## 소제목 1$/m.test(beforeHeadingRefuse) &&
+			afterHeadingRefuse === beforeHeadingRefuse,
+		`exit=${headingRefuse.status}, unchanged=${afterHeadingRefuse === beforeHeadingRefuse}`,
+	);
+
+	// 4. 소제목까지 채운 뒤 publish-post 실행 → draft: false, pubDate: 오늘
 	// draft 줄 끝에 YAML 주석이 붙어 있어도 바뀌어야 한다.
 	if (existsSync(testPostPath)) {
 		const filled = readFileSync(testPostPath, 'utf8')
-			.replace(/"TODO: [^"]*"/g, '"QA 시험 값"')
+			.replace(/^## 소제목 (\d)$/gm, '## QA 시험 소제목 $1')
 			.replace(/^draft:\s*true\s*$/m, 'draft: true # 아침에 확인');
 		writeFileSync(testPostPath, filled, 'utf8');
 	}
-	const step4 = runCmd('npm', ['run', 'publish-post', '--', testPostRel]);
+	const step4 = await runCmd('npm', ['run', 'publish-post', '--', testPostRel]);
 	const publishedContent = existsSync(testPostPath) ? readFileSync(testPostPath, 'utf8') : '';
 	const isDraftFalse = /^draft:\s*false\s*(#.*)?$/m.test(publishedContent);
 	const isPubDateToday = new RegExp(`^pubDate:\\s*["']?${today}["']?\\s*$`, 'm').test(publishedContent);
@@ -191,8 +257,7 @@ try {
 	);
 
 	// 5. 발행 후 다시 npm run build → 목록·rss·sitemap·og·폴더에 나타남
-	rmSync(distDir, { recursive: true, force: true });
-	const buildPublished = runCmd('npm', ['run', 'build']);
+	const buildPublished = await runBuild();
 	if (buildPublished.status === 0) {
 		const blogIndex = existsSync(path.join(distDir, 'blog', 'index.html'))
 			? readFileSync(path.join(distDir, 'blog', 'index.html'), 'utf8')
@@ -217,8 +282,8 @@ try {
 	}
 
 	// 6. 깨질 만한 경우(예외 입력) 시험
-	const badDate1 = runCmd('npm', ['run', 'new-post', '--', '--date', '2026-1-1', '--slug', 'bad-date']);
-	const badDate2 = runCmd('npm', ['run', 'new-post', '--', '--date', '2026-02-30', '--slug', 'bad-date']);
+	const badDate1 = await runCmd('npm', ['run', 'new-post', '--', '--date', '2026-1-1', '--slug', 'bad-date']);
+	const badDate2 = await runCmd('npm', ['run', 'new-post', '--', '--date', '2026-02-30', '--slug', 'bad-date']);
 	record(
 		'6-a. 잘못된 --date 형식(2026-1-1, 2026-02-30) 거부',
 		badDate1.status !== 0 && badDate2.status !== 0,
@@ -226,17 +291,18 @@ try {
 	);
 
 	const badSlugs = ['has space', 'UpperCase', '한글슬러그', '-leading', 'trailing-', 'double--dash', ''];
-	const slugChecks = badSlugs.map((s) => {
-		const res = runCmd('npm', ['run', 'new-post', '--', '--date', TEST_DATE, '--slug', s]);
-		return { slug: s, failed: res.status !== 0 };
-	});
+	const slugChecks = [];
+	for (const s of badSlugs) {
+		const res = await runCmd('npm', ['run', 'new-post', '--', '--date', TEST_DATE, '--slug', s]);
+		slugChecks.push({ slug: s, failed: res.status !== 0 });
+	}
 	record(
 		'6-b. 잘못된 --slug(공백·대문자·한글·하이픈 오류·빈 값) 거부',
 		slugChecks.every((c) => c.failed),
 		slugChecks.map((c) => `${JSON.stringify(c.slug)}:${c.failed ? 'OK' : 'NG'}`).join(', '),
 	);
 
-	const missingInput = runCmd('npm', [
+	const missingInput = await runCmd('npm', [
 		'run',
 		'new-post',
 		'--',
@@ -257,7 +323,7 @@ try {
 	const materialFile = path.join(tmpDir, 'material.md');
 	const longLine = '가'.repeat(5000);
 	writeFileSync(materialFile, `재료 첫 줄\n위험한 주석 닫기 --> 포함\n${longLine}\n`, 'utf8');
-	const withInput = runCmd('npm', [
+	const withInput = await runCmd('npm', [
 		'run',
 		'new-post',
 		'--',
@@ -280,16 +346,16 @@ try {
 	);
 
 	// publish-post 예외: 없는 파일, 머리말 없는 파일, pubDate 없는 파일
-	const pubMissing = runCmd('npm', ['run', 'publish-post', '--', path.join(tmpDir, 'missing.md')]);
+	const pubMissing = await runCmd('npm', ['run', 'publish-post', '--', path.join(tmpDir, 'missing.md')]);
 	const noFrontmatterFile = path.join(tmpDir, 'no-frontmatter.md');
 	writeFileSync(noFrontmatterFile, '# 머리말이 없는 일반 마크다운 파일\n본문입니다.\n', 'utf8');
-	const pubNoFrontmatter = runCmd('npm', ['run', 'publish-post', '--', noFrontmatterFile]);
+	const pubNoFrontmatter = await runCmd('npm', ['run', 'publish-post', '--', noFrontmatterFile]);
 
 	const noPubDateFile = path.join(tmpDir, 'no-pubdate.md');
 	writeFileSync(noPubDateFile, '---\ntitle: "제목"\ndraft: true\n---\n본문\n', 'utf8');
-	const pubNoPubDate = runCmd('npm', ['run', 'publish-post', '--', noPubDateFile]);
+	const pubNoPubDate = await runCmd('npm', ['run', 'publish-post', '--', noPubDateFile]);
 
-	const pubNoArg = runCmd('npm', ['run', 'publish-post']);
+	const pubNoArg = await runCmd('npm', ['run', 'publish-post']);
 
 	record(
 		'6-e. publish-post 에 인자 없음·없는 파일·머리말 없는 파일·pubDate 없는 파일 실패',
@@ -303,9 +369,9 @@ try {
 	// 재료 주석이 남은 파일은 거부, --force 면 발행
 	const materialLeft = path.join(tmpDir, 'material-left.md');
 	writeFileSync(materialLeft, `---\ntitle: "제목"\npubDate: "${TEST_DATE}"\ndraft: true\n---\n본문\n<!-- 재료\n메모\n-->\n`, 'utf8');
-	const pubMaterial = runCmd('npm', ['run', 'publish-post', '--', materialLeft]);
+	const pubMaterial = await runCmd('npm', ['run', 'publish-post', '--', materialLeft]);
 	const stillDraft = /^draft: true$/m.test(readFileSync(materialLeft, 'utf8'));
-	const pubForce = runCmd('npm', ['run', 'publish-post', '--', materialLeft, '--force']);
+	const pubForce = await runCmd('npm', ['run', 'publish-post', '--', materialLeft, '--force']);
 	const forcedFalse = /^draft: false$/m.test(readFileSync(materialLeft, 'utf8'));
 	record(
 		'6-g. <!-- 재료 주석이 남으면 거부, --force 면 발행',
@@ -316,7 +382,7 @@ try {
 	// draft 값을 읽지 못하면 "이미 false" 라고 넘어가지 말고 실패해야 함
 	const badDraft = path.join(tmpDir, 'bad-draft.md');
 	writeFileSync(badDraft, `---\ntitle: "제목"\npubDate: "${TEST_DATE}"\ndraft: yes\n---\n본문\n`, 'utf8');
-	const pubBadDraft = runCmd('npm', ['run', 'publish-post', '--', badDraft]);
+	const pubBadDraft = await runCmd('npm', ['run', 'publish-post', '--', badDraft]);
 	record('6-h. 읽을 수 없는 draft 값(draft: yes)이면 실패', pubBadDraft.status !== 0, `exit=${pubBadDraft.status}`);
 
 	// 쓰기 권한이 없는 파일(0444)에 publish-post 실행 시 실패 확인
@@ -325,22 +391,25 @@ try {
 		encoding: 'utf8',
 		mode: 0o444,
 	});
-	const pubReadOnly = runCmd('npm', ['run', 'publish-post', '--', roFile]);
+	const pubReadOnly = await runCmd('npm', ['run', 'publish-post', '--', roFile]);
 	record(
 		'6-f. 쓰기 권한 없는 파일(0444) publish-post 실행 시 실패',
 		pubReadOnly.status !== 0,
 		`exit=${pubReadOnly.status}`,
 	);
 } finally {
-	// 만든 시험 글과 임시 폴더, dist 정리
-	rmSync(testPostPath, { force: true });
-	rmSync(inputPostPath, { force: true });
-	rmSync(distDir, { recursive: true, force: true });
-	if (tmpDir) rmSync(tmpDir, { recursive: true, force: true });
+	// 만든 시험 글과 임시 폴더(임시 빌드 결과물 포함) 정리
+	cleanup();
 }
 
-const cleanCheck = !existsSync(testPostPath) && !existsSync(inputPostPath) && !existsSync(distDir);
-record('7. 시험 종료 후 시험 글 및 dist 정리 확인', cleanCheck, `clean=${cleanCheck}`);
+const postsGone = !existsSync(testPostPath) && !existsSync(inputPostPath);
+const tmpGone = !tmpDir || !existsSync(tmpDir);
+const distUntouched = distSignature() === distBefore;
+record(
+	'7. 시험 종료 후 시험 글·임시 폴더 정리, 저장소 dist/ 는 그대로',
+	postsGone && tmpGone && distUntouched,
+	`postsGone=${postsGone}, tmpGone=${tmpGone}, distUntouched=${distUntouched}`,
+);
 
 const failed = results.filter((r) => !r.passed);
 console.log(`\n총 ${results.length}개 항목 중 ${results.length - failed.length}개 통과, ${failed.length}개 실패`);

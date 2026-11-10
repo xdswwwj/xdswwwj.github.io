@@ -40,8 +40,9 @@ npm run publish-post -- src/content/blog/2026-11-11-my-slug.md           # draft
 
 - 같은 이름의 파일이 있으면 `new-post` 는 덮어쓰지 않고 실패합니다. 글 내용은 만들지 않고 `TODO` 자리 표시만 채웁니다.
 - `--input` 재료는 글 맨 아래 HTML 주석에 붙습니다. 화면에는 안 보이지만 페이지 소스에는 남으니, 발행 전에 지우세요.
-- `publish-post` 는 `TODO:` 자리 표시나 `<!-- 재료` 주석이 남아 있으면 실패합니다. 그래도 발행하려면 끝에 `--force` 를 붙입니다.
+- `publish-post` 는 `TODO:` 자리 표시(소제목 포함), `## 소제목 N` 그대로인 소제목, `<!-- 재료` 주석이 남아 있으면 실패합니다. 그래도 발행하려면 끝에 `--force` 를 붙입니다.
 - `npm run build`(운영 빌드)에서는 `draft: true` 글이 목록·RSS·sitemap 등에서 빠집니다. 발행해도 파일 이름(주소)은 그대로입니다.
+- `npm run test:draft` 로 이 흐름 전체를 시험합니다. 빌드는 임시 폴더에 하므로 `dist/` 는 건드리지 않습니다. 시험 글(`*-qa-draft-*.md`)을 `src/content/blog` 에 잠깐 쓰고, 끝나거나 Ctrl+C 로 멈추면 지웁니다.
 
 ## 개인화 포인트
 

@@ -58,8 +58,11 @@ if (input !== undefined) {
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const target = path.join(repoRoot, 'src', 'content', 'blog', `${date}-${slug}.md`);
 
-// 칸 이름은 src/content.config.ts 의 essay 칸(layout·summary·closingQuestion)과 draft 를 따른다.
-// 문자열 칸은 스키마 검사를 통과하도록 TODO 자리 표시로 채운다.
+// layout·summary·closingQuestion 은 1번 카드(essay 칸, feature/jarvis-c0051)의 스키마를 따른다:
+//   layout: 'default' | 'essay', summary·closingQuestion: 선택 문자열.
+// 그 카드가 머지되기 전에는 이 세 칸이 스키마에 없어 빌드 때 조용히 버려진다(오류는 안 남).
+// 문자열 칸은 스키마 검사를 통과하도록 TODO 자리 표시로 채운다. 소제목도 TODO: 를 붙여
+// 채우지 않으면 publish-post 가 막는다.
 let body = `---
 title: "TODO: 제목"
 description: "TODO: 한 줄 설명"
@@ -72,11 +75,11 @@ layout: essay
 draft: true
 ---
 
-## 소제목 1
+## TODO: 소제목 1
 
-## 소제목 2
+## TODO: 소제목 2
 
-## 소제목 3
+## TODO: 소제목 3
 `;
 
 if (material !== null) {

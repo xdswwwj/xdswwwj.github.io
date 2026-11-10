@@ -2,13 +2,13 @@
 // 초안을 발행 상태로 바꾼다: draft: true → false, pubDate → 오늘(로컬 날짜).
 // 파일 이름(주소)과 본문은 바꾸지 않는다.
 // 사용법: node scripts/publish-post.mjs <파일> [--force]
-// TODO: 자리 표시나 <!-- 재료 주석이 남아 있으면 발행하지 않는다(--force 로만 넘길 수 있음).
+// TODO: 자리 표시, "## 소제목 N", <!-- 재료 주석이 남아 있으면 발행하지 않는다(--force 로만 넘길 수 있음).
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 
 const USAGE = `사용법: node scripts/publish-post.mjs src/content/blog/YYYY-MM-DD-<slug>.md [--force]
-  --force  TODO: 자리 표시나 <!-- 재료 주석이 남아 있어도 발행한다.`;
+  --force  TODO: 자리 표시, "## 소제목 N", <!-- 재료 주석이 남아 있어도 발행한다.`;
 
 function fail(message, showUsage = false) {
 	console.error(`오류: ${message}`);
@@ -50,6 +50,8 @@ let front = match[1];
 // 매일 돌리는 흐름이라, 채우지 않은 틀이나 재료가 그대로 공개되지 않게 막는다.
 const leftovers = [];
 if (text.includes('TODO:')) leftovers.push('TODO: 자리 표시');
+// TODO: 만 지우고 소제목 이름을 안 바꾼 경우("## 소제목 1")도 막는다.
+if (/^#{1,6}[ \t]+소제목[ \t]*\d+[ \t]*$/m.test(text)) leftovers.push('"소제목 N" 자리 표시');
 if (text.includes('<!-- 재료')) leftovers.push('<!-- 재료 주석');
 if (leftovers.length > 0 && !values.force) {
 	fail(`아직 지우지 않은 것이 있습니다: ${leftovers.join(', ')}. 채우거나 지운 뒤 다시 실행하세요 (그래도 발행하려면 --force).`);
