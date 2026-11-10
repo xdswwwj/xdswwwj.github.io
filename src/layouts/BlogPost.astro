@@ -41,6 +41,16 @@ const cleanSummary = summary?.trim();
 const cleanClosingQuestion = closingQuestion?.trim();
 const isArticle = readingTime !== undefined;
 const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
+
+// Essay only: a paragraph that is nothing but one <strong> becomes a pull line.
+// Done at build time so it works without JS. Default posts keep the plain <slot />.
+const essayBody = isEssay
+	? (await Astro.slots.render('default')).replace(
+			/<p><strong>((?:(?!<\/?strong[\s>]|<\/?p[\s>])[\s\S])*?)<\/strong><\/p>/g,
+			(match, inner: string) =>
+				inner.replace(/<[^>]*>/g, '').trim() ? `<p class="essay-pull"><strong>${inner}</strong></p>` : match
+		)
+	: undefined;
 ---
 
 <html lang="ko">
@@ -748,7 +758,7 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 						}
 						<hr />
 					</div>
-					<slot />
+					{isEssay ? <Fragment set:html={essayBody} /> : <slot />}
 					{isEssay && cleanClosingQuestion && <aside class="essay-closing" aria-label="끝 질문"><p>{cleanClosingQuestion}</p></aside>}
 				</div>
 			</article>
@@ -793,22 +803,6 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 			}
 		</main>
 		<Footer />
-		{
-			isEssay && (
-				<script is:inline>
-					(() => {
-						document.querySelectorAll('article.essay .prose > p').forEach((p) => {
-							const nodes = [...p.childNodes].filter(
-								(node) => node.nodeType !== Node.TEXT_NODE || node.textContent.trim()
-							);
-							if (nodes.length === 1 && nodes[0].nodeName === 'STRONG' && nodes[0].textContent.trim()) {
-								p.classList.add('essay-pull');
-							}
-						});
-					})();
-				</script>
-			)
-		}
 		<script is:inline>
 			(() => {
 				const bar = document.getElementById('read-progress');
