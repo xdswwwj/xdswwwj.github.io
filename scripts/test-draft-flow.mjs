@@ -2,7 +2,8 @@
 // 초안 생성 → 빌드 제외 → 발행 → 빌드 노출 및 예외 입력 통합 시험
 // - 빌드 결과물은 임시 폴더(--outDir)에 만든다. 저장소의 dist/ 는 건드리지 않는다.
 // - 시험 글 두 개(2026-11-11-qa-draft-*.md)는 src/content/blog 에 잠깐 쓴다(빌드에 넣어야 하므로).
-//   끝나거나 Ctrl+C(SIGINT)·SIGTERM 으로 멈춰도 지운다. .gitignore 에도 넣어 커밋에 섞이지 않게 했다.
+//   시작할 때 같은 이름의 파일이 이미 있으면 아무것도 지우지 않고 실패한다(기존 글·손본 시험 글 보호).
+//   끝나거나 Ctrl+C(SIGINT)·SIGTERM 으로 멈추면 이번 실행이 만든 파일만 지운다. .gitignore 에도 넣어 커밋에 섞이지 않게 했다.
 import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
@@ -90,16 +91,19 @@ function todayString() {
 
 let tmpDir = null;
 
+// 이번 실행이 만든(만들기 시작한) 시험 글만 담는다. 정리할 때 여기 있는 것만 지운다.
+// 시작 전에 파일이 없음을 확인했으므로, 만드는 명령을 돌리기 직전에 넣으면 그 뒤 그 경로의 파일은 이번 실행 것이다.
+const ownedPosts = new Set();
+
 function cleanup() {
-	rmSync(testPostPath, { force: true });
-	rmSync(inputPostPath, { force: true });
+	for (const p of ownedPosts) rmSync(p, { force: true });
 	if (tmpDir) rmSync(tmpDir, { recursive: true, force: true });
 }
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
 	process.on(signal, () => {
 		cleanup();
-		console.error(`\n${signal} 를 받아 멈춥니다. 시험 글과 임시 폴더는 지웠습니다.`);
+		console.error(`\n${signal} 를 받아 멈춥니다. 이번 실행이 만든 시험 글과 임시 폴더는 지웠습니다.`);
 		process.exit(130);
 	});
 }
@@ -109,12 +113,20 @@ if (existsSync(realDistDir)) {
 }
 const distBefore = distSignature();
 
+// 같은 이름의 파일이 이미 있으면 지우지 않고 멈춘다.
+const preexisting = [testPostPath, inputPostPath].filter((p) => existsSync(p));
+if (preexisting.length > 0) {
+	console.error('시험 글과 같은 이름의 파일이 이미 있어 시험을 시작하지 않습니다(아무것도 지우지 않았습니다):');
+	for (const p of preexisting) console.error(`  - ${path.relative(repoRoot, p)}`);
+	console.error('필요 없는 파일이면 직접 지우거나 옮긴 뒤 다시 실행하세요.');
+	process.exit(1);
+}
+
 try {
 	tmpDir = mkdtempSync(path.join(os.tmpdir(), 'qa-draft-test-'));
-	rmSync(testPostPath, { force: true });
-	rmSync(inputPostPath, { force: true });
 
 	// 1. new-post 로 초안 생성
+	ownedPosts.add(testPostPath);
 	const step1 = await runCmd('npm', ['run', 'new-post', '--', '--date', TEST_DATE, '--slug', TEST_SLUG]);
 	const createdExists = existsSync(testPostPath);
 	const createdContent = createdExists ? readFileSync(testPostPath, 'utf8') : '';
@@ -323,6 +335,7 @@ try {
 	const materialFile = path.join(tmpDir, 'material.md');
 	const longLine = '가'.repeat(5000);
 	writeFileSync(materialFile, `재료 첫 줄\n위험한 주석 닫기 --> 포함\n${longLine}\n`, 'utf8');
+	ownedPosts.add(inputPostPath);
 	const withInput = await runCmd('npm', [
 		'run',
 		'new-post',
@@ -402,7 +415,7 @@ try {
 	cleanup();
 }
 
-const postsGone = !existsSync(testPostPath) && !existsSync(inputPostPath);
+const postsGone = [...ownedPosts].every((p) => !existsSync(p));
 const tmpGone = !tmpDir || !existsSync(tmpDir);
 const distUntouched = distSignature() === distBefore;
 record(
