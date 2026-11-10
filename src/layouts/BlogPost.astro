@@ -37,6 +37,8 @@ const {
 } = Astro.props;
 
 const isEssay = layout === 'essay';
+const cleanSummary = summary?.trim();
+const cleanClosingQuestion = closingQuestion?.trim();
 const isArticle = readingTime !== undefined;
 const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 ---
@@ -638,6 +640,7 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 				font-size: 1.45rem;
 				font-weight: 600;
 				word-break: keep-all;
+				overflow-wrap: break-word;
 			}
 			article.essay .prose > p.essay-pull {
 				margin: 2.5rem 0;
@@ -731,7 +734,7 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 							}
 						</div>
 						<h1>{title}</h1>
-						{isEssay && summary && <p class="essay-lead">{summary}</p>}
+						{isEssay && cleanSummary && <p class="essay-lead">{cleanSummary}</p>}
 						{
 							tags.length > 0 && (
 								<ul class="tag-list">
@@ -746,7 +749,7 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 						<hr />
 					</div>
 					<slot />
-					{isEssay && closingQuestion && <aside class="essay-closing" aria-label="끝 질문"><p>{closingQuestion}</p></aside>}
+					{isEssay && cleanClosingQuestion && <aside class="essay-closing" aria-label="끝 질문"><p>{cleanClosingQuestion}</p></aside>}
 				</div>
 			</article>
 			{
@@ -790,19 +793,24 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 			}
 		</main>
 		<Footer />
+		{
+			isEssay && (
+				<script is:inline>
+					(() => {
+						document.querySelectorAll('article.essay .prose > p').forEach((p) => {
+							const nodes = [...p.childNodes].filter(
+								(node) => node.nodeType !== Node.TEXT_NODE || node.textContent.trim()
+							);
+							if (nodes.length === 1 && nodes[0].nodeName === 'STRONG' && nodes[0].textContent.trim()) {
+								p.classList.add('essay-pull');
+							}
+						});
+					})();
+				</script>
+			)
+		}
 		<script is:inline>
 			(() => {
-				if (document.querySelector('article.essay')) {
-					document.querySelectorAll('article.essay .prose > p').forEach((p) => {
-						const nodes = [...p.childNodes].filter((node) =>
-							node.nodeType !== Node.TEXT_NODE || node.textContent.trim()
-						);
-						if (nodes.length === 1 && nodes[0].nodeName === 'STRONG') {
-							p.classList.add('essay-pull');
-						}
-					});
-				}
-
 				const bar = document.getElementById('read-progress');
 
 				const onScroll = () => {
