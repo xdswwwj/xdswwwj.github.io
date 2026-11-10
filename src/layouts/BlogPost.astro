@@ -607,43 +607,76 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 			}
 		</style>
 		<style is:global>
-			article.essay .title h1 {
-				font-size: clamp(2.5rem, 7vw, 4.5rem);
+			/* ── Essay layout (layout: 'essay' only — never touches default posts) ── */
+			article.essay .prose .title h1 {
 				font-weight: 300;
-				line-height: 1.25;
-				overflow-wrap: anywhere;
+				font-size: clamp(2.2rem, 7vw, 3.4rem);
+				line-height: 1.2;
+				letter-spacing: -0.035em;
+				word-break: keep-all;
+				overflow-wrap: break-word;
 			}
 			article.essay .title .essay-lead {
-				margin: 1.5rem 0 0;
-				font-size: clamp(1.1rem, 2.5vw, 1.35rem);
-				line-height: 1.8;
+				margin: 1.25rem 0 0;
+				padding-left: 1rem;
+				border-left: 2px solid rgba(var(--accent-rgb), 0.5);
+				font-size: 1.2em;
+				line-height: 1.7;
 				color: var(--text-muted);
+				word-break: keep-all;
+				overflow-wrap: break-word;
+			}
+			/* The summary lead replaces the default first-paragraph emphasis */
+			article.essay .prose > p:first-of-type {
+				font-size: 1em;
+				line-height: 1.85;
 			}
 			article.essay .prose h2 {
-				margin: 4rem 0 1.5rem;
+				margin-top: 4.5rem;
 				padding-bottom: 0;
 				border-bottom: none;
-				font-size: clamp(1.35rem, 3vw, 1.65rem);
+				font-size: 1.45rem;
+				font-weight: 600;
+				word-break: keep-all;
 			}
 			article.essay .prose > p.essay-pull {
-				margin: 3rem 0;
-				font-size: clamp(1.4rem, 4vw, 1.9rem);
-				line-height: 1.6;
-				overflow-wrap: anywhere;
+				margin: 2.5rem 0;
+				font-size: 1.4em;
+				line-height: 1.5;
+				letter-spacing: -0.02em;
+				word-break: keep-all;
+				overflow-wrap: break-word;
 			}
 			article.essay .essay-closing {
-				margin-top: 4rem;
-				padding: clamp(1.25rem, 4vw, 2rem);
-				border-left: 3px solid var(--accent);
-				border-radius: 0 12px 12px 0;
-				background: rgba(var(--accent-rgb), 0.08);
-				overflow-wrap: anywhere;
+				margin-top: 3rem;
+				padding: 1.5rem;
+				border: 1px solid rgba(var(--accent-rgb), 0.18);
+				border-radius: 14px;
+				background: rgba(var(--accent-rgb), 0.06);
+				color: var(--text);
+				word-break: keep-all;
+				overflow-wrap: break-word;
+			}
+			article.essay .essay-closing::before {
+				content: '생각해 볼 질문';
+				display: block;
+				margin-bottom: 0.5rem;
+				font-size: 0.8rem;
+				font-weight: 600;
+				letter-spacing: 0.02em;
+				color: var(--accent);
 			}
 			article.essay .essay-closing p {
 				margin: 0;
-				font-size: clamp(1.1rem, 3vw, 1.35rem);
-				font-weight: 600;
-				line-height: 1.8;
+				font-size: 1.15em;
+				font-weight: 500;
+				line-height: 1.6;
+			}
+			@media (max-width: 375px) {
+				article.essay .prose .title h1 { font-size: 2rem; }
+				article.essay .title .essay-lead { font-size: 1.08em; padding-left: 0.85rem; }
+				article.essay .prose > p.essay-pull { font-size: 1.28em; }
+				article.essay .essay-closing { padding: 1.25rem; }
 			}
 		</style>
 	</head>
