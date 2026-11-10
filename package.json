@@ -10,7 +10,9 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "new-post": "node scripts/new-post.mjs",
+    "publish-post": "node scripts/publish-post.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "^7.0.0",

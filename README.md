@@ -30,6 +30,18 @@ category: 'LLM 엔지니어링'
 - `heroImage`(대표 이미지)는 선택이라 없어도 됩니다.
 - 첫 글은 `src/content/blog/first-post-template.md` 에 골격을 넣어뒀습니다. **"사건 → 원칙"** 구조로, 일반론에 빠지지 않게 쓰는 템플릿이니 복사해서 채우세요.
 
+## 초안 → 발행
+
+```bash
+npm run new-post -- --date 2026-11-11 --slug my-slug [--input 재료.md]   # 초안 틀 생성 (draft: true)
+npm run dev                                                              # 개발 서버에서는 초안도 보임 → 확인
+npm run publish-post -- src/content/blog/2026-11-11-my-slug.md           # draft: false, pubDate 를 오늘로
+```
+
+- 같은 이름의 파일이 있으면 `new-post` 는 덮어쓰지 않고 실패합니다. 글 내용은 만들지 않고 `TODO` 자리 표시만 채웁니다.
+- `--input` 재료는 글 맨 아래 HTML 주석에 붙습니다. 화면에는 안 보이지만 페이지 소스에는 남으니, 발행 전에 지우세요.
+- `npm run build`(운영 빌드)에서는 `draft: true` 글이 목록·RSS·sitemap 등에서 빠집니다. 발행해도 파일 이름(주소)은 그대로입니다.
+
 ## 개인화 포인트
 
 - `src/consts.ts` — 사이트 제목 · 설명
