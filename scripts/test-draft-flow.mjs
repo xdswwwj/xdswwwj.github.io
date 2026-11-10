@@ -160,11 +160,28 @@ try {
 		record('3-c. draft 칸이 없는 기존 글(welcome)은 계속 공개됨', false, '빌드 실패로 확인 불가');
 	}
 
-	// 4. publish-post 실행 → draft: false, pubDate: 오늘
+	// 4-a. TODO: 자리 표시가 남은 채로는 발행이 거부되고 파일이 그대로여야 함
 	const today = todayString();
+	const beforeRefuse = existsSync(testPostPath) ? readFileSync(testPostPath, 'utf8') : '';
+	const refuse = runCmd('npm', ['run', 'publish-post', '--', testPostRel]);
+	const afterRefuse = existsSync(testPostPath) ? readFileSync(testPostPath, 'utf8') : '';
+	record(
+		'4-a. TODO: 자리 표시가 남아 있으면 publish-post 거부 (파일 그대로)',
+		refuse.status !== 0 && beforeRefuse !== '' && afterRefuse === beforeRefuse,
+		`exit=${refuse.status}, unchanged=${afterRefuse === beforeRefuse}`,
+	);
+
+	// 4. 자리 표시를 채운 뒤 publish-post 실행 → draft: false, pubDate: 오늘
+	// draft 줄 끝에 YAML 주석이 붙어 있어도 바뀌어야 한다.
+	if (existsSync(testPostPath)) {
+		const filled = readFileSync(testPostPath, 'utf8')
+			.replace(/"TODO: [^"]*"/g, '"QA 시험 값"')
+			.replace(/^draft:\s*true\s*$/m, 'draft: true # 아침에 확인');
+		writeFileSync(testPostPath, filled, 'utf8');
+	}
 	const step4 = runCmd('npm', ['run', 'publish-post', '--', testPostRel]);
 	const publishedContent = existsSync(testPostPath) ? readFileSync(testPostPath, 'utf8') : '';
-	const isDraftFalse = /^draft:\s*false\s*$/m.test(publishedContent);
+	const isDraftFalse = /^draft:\s*false\s*(#.*)?$/m.test(publishedContent);
 	const isPubDateToday = new RegExp(`^pubDate:\\s*["']?${today}["']?\\s*$`, 'm').test(publishedContent);
 
 	record(
@@ -282,6 +299,25 @@ try {
 			pubNoPubDate.status !== 0,
 		`noArg=${pubNoArg.status}, missing=${pubMissing.status}, noFrontmatter=${pubNoFrontmatter.status}, noPubDate=${pubNoPubDate.status}`,
 	);
+
+	// 재료 주석이 남은 파일은 거부, --force 면 발행
+	const materialLeft = path.join(tmpDir, 'material-left.md');
+	writeFileSync(materialLeft, `---\ntitle: "제목"\npubDate: "${TEST_DATE}"\ndraft: true\n---\n본문\n<!-- 재료\n메모\n-->\n`, 'utf8');
+	const pubMaterial = runCmd('npm', ['run', 'publish-post', '--', materialLeft]);
+	const stillDraft = /^draft: true$/m.test(readFileSync(materialLeft, 'utf8'));
+	const pubForce = runCmd('npm', ['run', 'publish-post', '--', materialLeft, '--force']);
+	const forcedFalse = /^draft: false$/m.test(readFileSync(materialLeft, 'utf8'));
+	record(
+		'6-g. <!-- 재료 주석이 남으면 거부, --force 면 발행',
+		pubMaterial.status !== 0 && stillDraft && pubForce.status === 0 && forcedFalse,
+		`refuse=${pubMaterial.status}, stillDraft=${stillDraft}, force=${pubForce.status}, forcedFalse=${forcedFalse}`,
+	);
+
+	// draft 값을 읽지 못하면 "이미 false" 라고 넘어가지 말고 실패해야 함
+	const badDraft = path.join(tmpDir, 'bad-draft.md');
+	writeFileSync(badDraft, `---\ntitle: "제목"\npubDate: "${TEST_DATE}"\ndraft: yes\n---\n본문\n`, 'utf8');
+	const pubBadDraft = runCmd('npm', ['run', 'publish-post', '--', badDraft]);
+	record('6-h. 읽을 수 없는 draft 값(draft: yes)이면 실패', pubBadDraft.status !== 0, `exit=${pubBadDraft.status}`);
 
 	// 쓰기 권한이 없는 파일(0444)에 publish-post 실행 시 실패 확인
 	const roFile = path.join(tmpDir, 'readonly-post.md');

@@ -10,6 +10,8 @@ const blog = defineCollection({
 			slug: z.string().optional(),
 			description: z.string(),
 			pubDate: z.coerce.date(),
+			// true 면 운영 빌드에서 빠진다 (src/utils/posts.ts). 개발 서버에서는 보인다.
+			draft: z.boolean().optional().default(false),
 			updatedDate: z.coerce.date().optional(),
 			heroImage: z.optional(image()),
 			category: z.string(),
