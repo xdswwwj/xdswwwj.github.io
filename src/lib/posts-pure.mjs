@@ -11,9 +11,14 @@ const partsFormatter = new Intl.DateTimeFormat('en-US', {
 	day: 'numeric',
 });
 
-/** Calendar year/month/day of a date in SITE_TIME_ZONE. */
+/**
+ * Calendar year/month/day of a date in SITE_TIME_ZONE.
+ * @param {Date} date
+ * @returns {{ year: number; month: number; day: number }}
+ */
 export function dateParts(date) {
-	const parts = {};
+	/** @type {{ year: number; month: number; day: number }} */
+	const parts = { year: 0, month: 0, day: 0 };
 	for (const { type, value } of partsFormatter.formatToParts(date)) {
 		if (type === 'year' || type === 'month' || type === 'day') parts[type] = Number(value);
 	}

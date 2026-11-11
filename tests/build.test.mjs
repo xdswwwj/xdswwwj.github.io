@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import {
+	copyFileSync,
 	existsSync,
 	mkdirSync,
 	readFileSync,
@@ -312,6 +313,28 @@ ${draftSentinel}
 				'utf8',
 			);
 
+			// (e) 대표 이미지(heroImage)가 있는 글: 글 머리에 이미지가 보여야 함
+			copyFileSync(
+				join(ROOT, 'src', 'assets', 'blog-placeholder-1.jpg'),
+				join(FIXTURE_DIR, '2026', '11', 'hero.jpg'),
+			);
+			writeFileSync(
+				join(FIXTURE_DIR, '2026', '11', '2026-11-08-with-hero-image.md'),
+				`---
+title: '대표 이미지 있는 글'
+description: '글 머리에 대표 이미지가 보이는지 확인'
+pubDate: '2026-11-08'
+category: '경계시험'
+heroImage: './hero.jpg'
+---
+
+## 대표 이미지 확인
+
+글 머리에 대표 이미지가 나와야 합니다.
+`,
+				'utf8',
+			);
+
 			runBuild();
 
 			// 전체 HTML · 메타 · 내부 링크 · draft 제외 검사
@@ -343,6 +366,45 @@ ${draftSentinel}
 			assert.ok(
 				!longTitleHtml.includes('class="chips p-tags"'),
 				'태그 0개 글에는 태그 목록이 렌더되지 않아야 합니다.',
+			);
+
+			assert.ok(
+				!longTitleHtml.includes('class="p-hero"'),
+				'heroImage 가 없는 글에는 대표 이미지 영역이 렌더되지 않아야 합니다.',
+			);
+			assert.ok(
+				longTitleHtml.includes('class="p-rule"'),
+				'heroImage 가 없는 글은 글 머리 아래 구분선이 그대로 있어야 합니다.',
+			);
+
+			// heroImage 가 있는 글: 글 머리(header 와 본문 사이)에 대표 이미지가 실제 파일로 나와야 함
+			const heroHtml = readFileSync(
+				join(
+					DIST_DIR,
+					'blog',
+					FIXTURE_NAME,
+					'2026',
+					'11',
+					'2026-11-08-with-hero-image',
+					'index.html',
+				),
+				'utf8',
+			);
+			const heroMatch = heroHtml.match(
+				/<\/header>\s*<figure class="p-hero"[^>]*>\s*(<img\b[^>]*>)\s*<\/figure>/,
+			);
+			assert.ok(heroMatch, '글 머리(header) 바로 아래에 대표 이미지 figure.p-hero 가 있어야 합니다.');
+			assert.ok(
+				heroHtml.indexOf('class="p-hero"') < heroHtml.indexOf('class="prose"'),
+				'대표 이미지는 본문보다 앞에 나와야 합니다.',
+			);
+			assert.ok(!heroHtml.includes('class="p-rule"'), '대표 이미지가 있으면 구분선은 빠져야 합니다.');
+			const heroSrc = heroMatch[1].match(/\bsrc="([^"]+)"/)?.[1];
+			assert.ok(heroSrc, '대표 이미지 <img> 에 src 가 있어야 합니다.');
+			const heroFile = resolveDistTarget(DIST_DIR, heroSrc.split('?')[0]);
+			assert.ok(
+				heroFile && statSync(heroFile).size > 0,
+				`대표 이미지 파일(${heroSrc})이 dist 에 있어야 합니다.`,
 			);
 
 			const tenTagsHtml = readFileSync(
