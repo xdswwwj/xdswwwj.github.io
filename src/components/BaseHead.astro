@@ -5,7 +5,6 @@ import '../styles/global.css';
 import type { ImageMetadata } from 'astro';
 import FallbackImage from '../assets/blog-placeholder-1.jpg';
 import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
-import { Font } from 'astro:assets';
 
 interface Props {
 	title: string;
@@ -70,6 +69,7 @@ const jsonLd = isArticle
 <!-- Global Metadata -->
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="color-scheme" content="light dark" />
 
 <!-- Pretendard (Korean web font) -->
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
@@ -89,8 +89,6 @@ const jsonLd = isArticle
 	href={new URL('rss.xml', Astro.site)}
 />
 <meta name="generator" content={Astro.generator} />
-
-<Font cssVariable="--font-atkinson" preload />
 
 <!-- Canonical URL -->
 <link rel="canonical" href={canonicalURL} />

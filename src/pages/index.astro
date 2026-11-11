@@ -1,17 +1,13 @@
 ---
-import { getCollection } from 'astro:content';
+import { formatKoreanDate, formatMonthDay, getSortedPosts, groupByMonth, readingTime } from '../lib/posts';
 import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
-import FormattedDate from '../components/FormattedDate.astro';
 import Header from '../components/Header.astro';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 
-const allPosts = (await getCollection('blog')).sort(
-	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
-);
-const posts = allPosts.slice(0, 5);
-
-const topics = [...new Set(allPosts.map((p) => p.data.category))].slice(0, 6);
+const HOME_LIMIT = 10;
+const allPosts = await getSortedPosts();
+const months = groupByMonth(allPosts.slice(0, HOME_LIMIT));
 ---
 
 <!doctype html>
@@ -21,336 +17,110 @@ const topics = [...new Set(allPosts.map((p) => p.data.category))].slice(0, 6);
 	</head>
 	<body>
 		<Header />
-		<main>
-			<section class="hero">
-				<div class="glow" aria-hidden="true"></div>
-				<span class="badge rise" style="animation-delay: 0.05s">
-					<span class="dot"></span>
-					소프트웨어 엔지니어링 노트
-				</span>
-				<h1 class="rise" style="animation-delay: 0.12s">
-					복잡한 문제를<br />
-					<span class="gradient-text">단순하게</span> 설계하는 법
-				</h1>
-				<p class="tagline rise" style="animation-delay: 0.19s">{SITE_DESCRIPTION}</p>
-				<p class="intro rise" style="animation-delay: 0.26s">
-					"왜 이렇게 설계해야 하는가", "이 기술을 어떻게 써야 하는가" 같은 질문을
-					실무 경험에 비추어 정리하는 공간입니다.
-				</p>
-				<div class="cta rise" style="animation-delay: 0.33s">
-					<a class="btn" href="/blog">전체 글 보기 →</a>
-					<a class="btn ghost" href="/about">소개</a>
-				</div>
-				{
-					topics.length > 0 && (
-						<div class="topics rise" style="animation-delay: 0.4s">
-							{topics.map((t) => (
-								<a class="topic" href={`/categories/${t}`}>
-									#{t}
-								</a>
-							))}
-						</div>
-					)
-				}
+		<main class="wrap">
+			<section class="intro">
+				<h1 class="sr-only">{SITE_TITLE}</h1>
+				<p class="lead">{SITE_DESCRIPTION}</p>
+				<a class="more" href="/about">
+					소개 더 보기
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+				</a>
 			</section>
 
-			<section class="recent">
-				<div class="section-head">
-					<h2 class="section-title">최근 글</h2>
-					<a class="more-link" href="/blog">모든 글 →</a>
-				</div>
-				<ul class="post-list">
-					{
-						posts.map((post, i) => (
-							<li class="reveal" style={`transition-delay: ${i * 0.06}s`}>
-								<a href={`/blog/${post.id}/`}>
-									<span class="index">{String(i + 1).padStart(2, '0')}</span>
-									<div class="post-body">
-										<div class="meta">
-											<span class="cat">{post.data.category}</span>
-											<span class="sep">·</span>
-											<FormattedDate date={post.data.pubDate} />
-										</div>
-										<h3 class="title">{post.data.title}</h3>
-										<p class="excerpt">{post.data.description}</p>
-									</div>
-									<span class="arrow" aria-hidden="true">→</span>
-								</a>
-							</li>
-						))
-					}
-				</ul>
-			</section>
+			{
+				months.map(({ year, month, posts }) => (
+					<section class="month" aria-label={`${year}년 ${month}월`}>
+						<h2 class="month-t num">
+							<span>{year}년 {month}월</span>
+							<small>{posts.length}개</small>
+						</h2>
+						<ul class="post-rows">
+							{posts.map((post) => {
+								const d = post.data.pubDate;
+								return (
+									<li class="post-row">
+										<a href={`/blog/${post.id}/`}>
+											<time class="d num" datetime={d.toISOString()}>
+												{formatMonthDay(d)}
+											</time>
+											<span class="t">{post.data.title}</span>
+											<span class="s">{post.data.description}</span>
+											<span class="m num">
+												<span class="pd">{formatKoreanDate(d, { withYear: false })}</span>
+												<span class="dot" />
+												<span>{post.data.category}</span>
+												<span class="dot" />
+												<span>{readingTime(post.body).replace('약 ', '')}</span>
+											</span>
+										</a>
+									</li>
+								);
+							})}
+						</ul>
+					</section>
+				))
+			}
+
+			{allPosts.length === 0 && <p class="empty">아직 쓴 글이 없어요.</p>}
+
+			<a class="btn-sub" href="/blog">전체 글 보기</a>
 		</main>
 		<Footer />
-		<script is:inline>
-			(() => {
-				const els = document.querySelectorAll('.reveal');
-				if (els.length) {
-					if (!('IntersectionObserver' in window)) {
-						els.forEach((el) => el.classList.add('in'));
-					} else {
-						const io = new IntersectionObserver(
-							(entries) => {
-								entries.forEach((e) => {
-									if (e.isIntersecting) {
-										e.target.classList.add('in');
-										io.unobserve(e.target);
-									}
-								});
-							},
-							{ rootMargin: '0px 0px -10% 0px', threshold: 0.05 }
-						);
-						els.forEach((el) => io.observe(el));
-					}
-				}
-			})();
-		</script>
 	</body>
 </html>
 
 <style>
-	.hero {
-		position: relative;
-		padding: 3rem 0 3.5rem;
-		margin-bottom: 3rem;
-		border-bottom: 1px solid var(--border);
-		overflow: hidden;
+	.intro {
+		padding: var(--sp-10) 0 var(--sp-2);
 	}
-	.glow {
-		position: absolute;
-		top: -120px;
-		left: 50%;
-		transform: translateX(-50%);
-		width: 620px;
-		height: 420px;
-		background: radial-gradient(
-			ellipse at center,
-			var(--glow) 0%,
-			transparent 70%
-		);
-		filter: blur(40px);
-		pointer-events: none;
-		z-index: -1;
-		animation: glow-float 9s ease-in-out infinite;
+	.lead {
+		font-size: var(--fs-lead);
+		font-weight: 600;
+		line-height: 1.5;
+		letter-spacing: -0.02em;
+		color: var(--ink);
 	}
-	@keyframes glow-float {
-		0%, 100% { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
-		50% { transform: translateX(-50%) translateY(18px) scale(1.06); opacity: 0.85; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.glow { animation: none; }
-	}
-	.badge {
+	.more {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.5rem;
-		padding: 0.3rem 0.8rem;
-		font-size: 0.8rem;
-		font-weight: 600;
-		letter-spacing: 0.02em;
-		color: var(--text-muted);
-		background: var(--surface-2);
-		border: 1px solid var(--border);
-		border-radius: 999px;
-		margin-bottom: 1.5rem;
-	}
-	.dot {
-		width: 7px;
-		height: 7px;
-		border-radius: 50%;
-		background: var(--accent);
-		box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.2);
-	}
-	.hero h1 {
-		font-size: clamp(2.2rem, 6vw, 3.4rem);
-		line-height: 1.1;
-		letter-spacing: -0.03em;
-		margin-bottom: 1rem;
-	}
-	.tagline {
-		font-size: 1.2rem;
-		color: var(--text);
-		font-weight: 600;
-		margin-bottom: 0.6rem;
-	}
-	.intro {
-		color: var(--text-muted);
-		max-width: 38rem;
-		margin-bottom: 1.75rem;
-	}
-	.cta {
-		display: flex;
-		gap: 0.75rem;
-		flex-wrap: wrap;
-		margin-bottom: 1.75rem;
-	}
-	.btn {
-		display: inline-block;
-		padding: 0.65rem 1.3rem;
-		border-radius: 12px;
-		font-size: 0.95rem;
-		font-weight: 600;
-		background: var(--accent-gradient);
-		color: var(--on-accent);
-		border: 1px solid transparent;
-		box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.3);
-		transition: transform 0.1s ease, box-shadow 0.15s ease;
-	}
-	.btn:hover {
-		color: var(--on-accent);
-		text-decoration: none;
-		transform: translateY(-2px);
-		box-shadow: 0 10px 28px rgba(var(--accent-rgb), 0.4);
-	}
-	.btn.ghost {
-		background: var(--surface-2);
-		color: var(--text);
-		border-color: var(--border);
-		box-shadow: none;
-	}
-	.btn.ghost:hover {
-		color: var(--accent);
-		border-color: var(--accent);
-	}
-	.topics {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.5rem;
-	}
-	.topic {
-		font-size: 0.85rem;
+		gap: 2px;
+		margin-top: var(--sp-3);
+		font-size: var(--fs-ui);
 		font-weight: 500;
-		color: var(--text-muted);
-		padding: 0.3rem 0.7rem;
-		border-radius: 8px;
-		background: var(--surface-2);
-		border: 1px solid var(--border);
-		transition: color 0.15s ease, border-color 0.15s ease;
-	}
-	.topic:hover {
 		color: var(--accent);
-		border-color: var(--accent);
-		text-decoration: none;
 	}
-
-	.section-head {
+	.more:hover {
+		color: var(--accent-hover);
+	}
+	.month {
+		margin-top: var(--sp-10);
+	}
+	.month-t {
 		display: flex;
-		align-items: baseline;
 		justify-content: space-between;
-		margin-bottom: 1.5rem;
-	}
-	.section-title {
-		font-size: 0.85rem;
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-		color: var(--text-muted);
-		margin: 0;
-	}
-	.more-link {
-		font-size: 0.9rem;
+		align-items: baseline;
+		padding-bottom: var(--sp-3);
+		border-bottom: 1px solid var(--line);
+		font-size: var(--fs-sub);
 		font-weight: 600;
-		color: var(--text-muted);
+		color: var(--soft);
+		letter-spacing: 0;
 	}
-	.more-link:hover {
-		color: var(--accent);
-		text-decoration: none;
+	.month-t small {
+		font-size: var(--fs-sub);
+		font-weight: 500;
+		color: var(--soft);
 	}
-	.post-list {
-		list-style: none;
-		padding: 0;
-		margin: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
+	.empty {
+		padding: var(--sp-10) 0;
+		color: var(--soft);
 	}
-	.post-list li a {
-		display: flex;
-		align-items: flex-start;
-		gap: 1.1rem;
-		padding: 1.25rem 1.4rem;
-		border: 1px solid var(--border);
-		border-radius: 16px;
-		background: var(--surface);
-		color: inherit;
-		text-decoration: none;
-		transition: border-color 0.15s ease, box-shadow 0.15s ease,
-			transform 0.1s ease;
-	}
-	.post-list li a:hover {
-		border-color: rgba(var(--accent-rgb), 0.5);
-		box-shadow: var(--box-shadow);
-		text-decoration: none;
-		transform: translateY(-2px);
-	}
-	.index {
-		font-size: 0.95rem;
-		font-weight: 700;
-		font-feature-settings: 'tnum';
-		color: var(--accent);
-		opacity: 0.5;
-		padding-top: 0.15rem;
-	}
-	.post-body {
-		flex: 1;
-		min-width: 0;
-	}
-	.meta {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		font-size: 0.82rem;
-		color: var(--text-muted);
-		margin-bottom: 0.4rem;
-	}
-	.cat {
-		color: var(--accent);
-		font-weight: 600;
-	}
-	.sep {
-		opacity: 0.5;
-	}
-	.post-list .title {
-		margin: 0 0 0.35rem;
-		font-size: 1.2rem;
-		letter-spacing: -0.01em;
-	}
-	.post-list li a:hover .title {
-		color: var(--accent);
-	}
-	.excerpt {
-		margin: 0;
-		color: var(--text-muted);
-		font-size: 0.93rem;
-		line-height: 1.6;
-		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
-	}
-	.arrow {
-		align-self: center;
-		color: var(--text-muted);
-		font-size: 1.1rem;
-		opacity: 0;
-		transform: translateX(-4px);
-		transition: opacity 0.15s ease, transform 0.15s ease, color 0.15s ease;
-	}
-	.post-list li a:hover .arrow {
-		opacity: 1;
-		transform: translateX(0);
-		color: var(--accent);
-	}
-	@media (max-width: 720px) {
-		.hero {
-			padding: 2rem 0 2.5rem;
+	@media (min-width: 720px) {
+		.intro {
+			padding: var(--sp-16) 0 var(--sp-4);
 		}
-		.arrow {
-			display: none;
-		}
-		.post-list li a {
-			padding: 1.1rem 1.2rem;
-			gap: 0.85rem;
+		.month {
+			margin-top: var(--sp-12);
 		}
 	}
 </style>
