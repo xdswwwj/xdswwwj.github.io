@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import type { APIRoute } from 'astro';
-import { getCollection } from 'astro:content';
+import { getSortedPosts } from '../../lib/posts';
 import satori from 'satori';
 import sharp from 'sharp';
 import { SITE_TITLE } from '../../consts';
@@ -12,7 +12,7 @@ const [fontBold, fontRegular] = await Promise.all([
 ]);
 
 export async function getStaticPaths() {
-	const posts = await getCollection('blog');
+	const posts = await getSortedPosts();
 	return posts.map((post) => ({
 		params: { slug: post.id },
 		props: {
