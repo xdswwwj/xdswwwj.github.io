@@ -1,113 +1,80 @@
 ---
-const today = new Date();
+import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+
+const year = new Date().getFullYear();
 ---
-<footer>
-	<div class="footer-inner">
-		<span>© {today.getFullYear()} 도현의 개발 노트</span>
-		<span class="dot">·</span>
-		<a href="https://github.com/xdswwwj" target="_blank" rel="noopener">GitHub</a>
-		<span class="dot">·</span>
-		<span>Astro로 제작</span>
+
+<footer class="site-footer">
+	<div class="wrap footer-in">
+		<div>
+			<div class="f-name">{SITE_TITLE}</div>
+			<p class="f-desc">{SITE_DESCRIPTION}</p>
+		</div>
+		<div class="f-right">
+			<nav aria-label="바닥 링크">
+				<a href="/about">소개</a>
+				<a href="/rss.xml">RSS</a>
+				<a href="https://github.com/xdswwwj" target="_blank" rel="noopener">GitHub</a>
+			</nav>
+			<div class="f-copy num">© {year} {SITE_TITLE}</div>
+		</div>
 	</div>
 </footer>
-<div id="cursor-glow" aria-hidden="true"></div>
-<button id="back-to-top" type="button" aria-label="맨 위로" title="맨 위로">
-	<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-		<path d="M12 19V5M5 12l7-7 7 7"></path>
-	</svg>
-</button>
-<script is:inline>
-	(() => {
-		const btn = document.getElementById('back-to-top');
-		if (btn) {
-			const toggle = () => btn.classList.toggle('show', window.scrollY > 400);
-			toggle();
-			window.addEventListener('scroll', toggle, { passive: true });
-			btn.addEventListener('click', () => {
-				const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-				window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
-			});
-		}
 
-		// Site-wide cursor-follow ambient spotlight (desktop, motion-on only)
-		const glow = document.getElementById('cursor-glow');
-		const fine = matchMedia('(pointer: fine)').matches;
-		const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-		if (glow && fine && !reduce) {
-			const root = document.documentElement;
-			let raf = 0;
-			window.addEventListener('pointermove', (e) => {
-				if (raf) return;
-				raf = requestAnimationFrame(() => {
-					raf = 0;
-					root.style.setProperty('--mx', e.clientX + 'px');
-					root.style.setProperty('--my', e.clientY + 'px');
-					glow.classList.add('on');
-				});
-			}, { passive: true });
-			document.addEventListener('mouseleave', () => glow.classList.remove('on'));
-		}
-	})();
-</script>
 <style>
-	footer {
+	.site-footer {
 		flex-shrink: 0;
-		padding: 2.5em 1em 3em 1em;
-		text-align: center;
-		color: var(--text-muted);
-		font-size: 0.9rem;
-		border-top: 1px solid var(--border);
+		margin-top: var(--sp-16);
+		padding: var(--sp-8) 0 var(--sp-10);
+		border-top: 1px solid var(--line);
 	}
-	.footer-inner {
+	.footer-in {
 		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		align-items: center;
-		gap: 0.5em;
+		flex-direction: column;
+		gap: var(--sp-3);
 	}
-	.dot { color: var(--border); }
-	footer a { color: var(--text-muted); text-decoration: none; }
-	footer a:hover { color: var(--accent); }
-
-	#back-to-top {
-		position: fixed;
-		right: clamp(1rem, 4vw, 2rem);
-		bottom: clamp(1rem, 4vw, 2rem);
-		z-index: 60;
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 44px;
-		height: 44px;
-		padding: 0;
-		border: 1px solid var(--border);
-		border-radius: 12px;
-		background: color-mix(in srgb, var(--surface) 85%, transparent);
-		backdrop-filter: saturate(180%) blur(8px);
-		-webkit-backdrop-filter: saturate(180%) blur(8px);
-		color: var(--text-muted);
-		cursor: pointer;
-		box-shadow: var(--box-shadow);
-		opacity: 0;
-		transform: translateY(12px) scale(0.9);
-		pointer-events: none;
-		transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
-			color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+	.f-name {
+		font-size: var(--fs-body);
+		font-weight: 700;
+		color: var(--ink);
 	}
-	#back-to-top.show {
-		opacity: 1;
-		transform: translateY(0) scale(1);
-		pointer-events: auto;
+	.f-desc {
+		margin-top: 2px;
+		font-size: var(--fs-sub);
+		color: var(--soft);
 	}
-	#back-to-top:hover {
-		color: var(--accent);
-		border-color: var(--accent);
-		background: var(--glow);
-		transform: translateY(-2px) scale(1);
+	nav {
+		display: flex;
+		gap: var(--sp-4);
+		font-size: var(--fs-sub);
 	}
-	@media (prefers-reduced-motion: reduce) {
-		#back-to-top { transition: opacity 0.2s ease; transform: none; }
-		#back-to-top.show { transform: none; }
-		#back-to-top:hover { transform: none; }
+	nav a {
+		color: var(--soft);
+	}
+	nav a:hover {
+		color: var(--ink);
+	}
+	.f-copy {
+		margin-top: var(--sp-2);
+		font-size: var(--fs-sub);
+		color: var(--soft);
+	}
+	@media (min-width: 720px) {
+		.footer-in {
+			flex-direction: row;
+			justify-content: space-between;
+			align-items: flex-end;
+			gap: var(--sp-8);
+		}
+		.f-right {
+			display: flex;
+			flex-direction: column;
+			align-items: flex-end;
+			gap: var(--sp-2);
+			flex: none;
+		}
+		.f-copy {
+			margin-top: 0;
+		}
 	}
 </style>

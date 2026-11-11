@@ -8,7 +8,11 @@ import { SITE_TITLE } from '../../consts';
 const posts = await getSortedPosts();
 const counts = new Map<string, number>();
 for (const p of posts) counts.set(p.data.category, (counts.get(p.data.category) ?? 0) + 1);
-const categories = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+const categories = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+
+const tagCounts = new Map<string, number>();
+for (const p of posts) for (const t of p.data.tags ?? []) tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1);
+const tags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 ---
 
 <!doctype html>
@@ -18,77 +22,89 @@ const categories = [...counts.entries()].sort((a, b) => b[1] - a[1]);
 	</head>
 	<body>
 		<Header />
-		<main>
+		<main class="wrap">
 			<header class="page-head">
-				<span class="kicker">주제별 모음</span>
-				<h1><span class="gradient-text">카테고리</span></h1>
-				<p>{categories.length}개의 카테고리</p>
+				<h1>카테고리</h1>
+				<p>주제별로 글을 모아 봐요.</p>
 			</header>
-			<ul class="chips">
+			<ul class="cat-list">
 				{
 					categories.map(([name, count]) => (
 						<li>
 							<a href={`/categories/${encodeURIComponent(name)}/`}>
-								<span class="name">{name}</span>
-								<span class="count">{count}</span>
+								<span class="cn">{name}</span>
+								<span class="cc num">{count}개</span>
+								<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
 							</a>
 						</li>
 					))
 				}
 			</ul>
+
+			{
+				tags.length > 0 && (
+					<section aria-labelledby="tags-title">
+						<h2 class="sec-title" id="tags-title">
+							<a href="/tags/">태그</a>
+						</h2>
+						<ul class="chips tag-cloud">
+							{tags.map(([name, count]) => (
+								<li>
+									<a class="chip" href={`/tags/${encodeURIComponent(name)}/`}>
+										#{name} <small>{count}</small>
+									</a>
+								</li>
+							))}
+						</ul>
+					</section>
+				)
+			}
 		</main>
 		<Footer />
 	</body>
 </html>
 
 <style>
-	.page-head {
-		margin-bottom: 2rem;
-		padding-bottom: 1.25rem;
-		border-bottom: 1px solid var(--border);
-	}
-	.kicker {
-		display: inline-block;
-		font-size: 0.78rem;
-		font-weight: 700;
-		letter-spacing: 0.12em;
-		color: var(--text-muted);
-		margin-bottom: 0.5rem;
-	}
-	.page-head h1 { margin-bottom: 0.25rem; font-size: 2.4rem; letter-spacing: -0.03em; }
-	.page-head p { margin: 0; color: var(--text-muted); }
-	.chips {
-		list-style: none;
-		padding: 0;
+	.cat-list {
 		margin: 0;
+		padding: 0;
+		list-style: none;
+		border-top: 1px solid var(--line);
+	}
+	.cat-list a {
 		display: flex;
-		flex-wrap: wrap;
-		gap: 0.75rem;
-	}
-	.chips li a {
-		display: inline-flex;
 		align-items: center;
-		gap: 0.5rem;
-		padding: 0.55rem 1rem;
-		border: 1px solid var(--border);
-		border-radius: 999px;
-		background: var(--surface);
-		color: var(--text);
-		text-decoration: none;
-		font-size: 1rem;
-		transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+		gap: var(--sp-3);
+		padding: var(--sp-4) 0;
+		border-bottom: 1px solid var(--line);
+		color: inherit;
 	}
-	.chips li a:hover {
-		border-color: rgba(var(--accent-rgb), 0.5);
+	.cn {
+		flex: 1;
+		min-width: 0;
+		font-size: var(--fs-title);
+		font-weight: 700;
+		color: var(--ink);
+		letter-spacing: -0.015em;
+	}
+	.cat-list a:hover .cn {
 		color: var(--accent);
-		background: rgba(var(--accent-rgb), 0.06);
-		text-decoration: none;
 	}
-	.count {
-		font-size: 0.8rem;
-		color: var(--text-muted);
-		background: var(--surface-2);
-		border-radius: 999px;
-		padding: 0.05rem 0.5rem;
+	.cc {
+		font-size: var(--fs-sub);
+		color: var(--soft);
+	}
+	.cat-list svg {
+		flex: none;
+		color: var(--faint);
+	}
+	.sec-title a {
+		color: inherit;
+	}
+	.sec-title a:hover {
+		color: var(--accent);
+	}
+	.tag-cloud {
+		margin-top: var(--sp-4);
 	}
 </style>

@@ -3,23 +3,27 @@ import { getSortedPosts } from '../../lib/posts';
 import BaseHead from '../../components/BaseHead.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
-import FormattedDate from '../../components/FormattedDate.astro';
 import { SITE_TITLE } from '../../consts';
 
 export async function getStaticPaths() {
 	const posts = await getSortedPosts();
-	const tags = [...new Set(posts.flatMap((p) => p.data.tags ?? []))];
-	return tags.map((tag) => ({
+	const counts = new Map<string, number>();
+	for (const p of posts) for (const t of p.data.tags ?? []) counts.set(t, (counts.get(t) ?? 0) + 1);
+	const allTags = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+	return allTags.map(([tag]) => ({
 		params: { tag },
 		props: {
 			tag,
+			allTags,
 			posts: posts
 				.filter((p) => (p.data.tags ?? []).includes(tag)),
 		},
 	}));
 }
 
-const { tag, posts } = Astro.props;
+const { tag, allTags, posts } = Astro.props;
+const pad = (n: number) => String(n).padStart(2, '0');
+const dotDate = (d: Date) => `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`;
 ---
 
 <!doctype html>
@@ -29,93 +33,60 @@ const { tag, posts } = Astro.props;
 	</head>
 	<body>
 		<Header />
-		<main>
+		<main class="wrap">
 			<header class="page-head">
-				<p class="kicker">태그</p>
-				<h1><span class="gradient-text">#{tag}</span></h1>
-				<p class="count">{posts.length}개의 글</p>
+				<h1>태그</h1>
+				<p>태그를 고르면 그 태그가 붙은 글을 모아 보여줘요.</p>
 			</header>
-			<ul class="post-list">
+			<ul class="chips">
 				{
-					posts.map((post) => (
+					allTags.map(([name, count]) => (
 						<li>
-							<a href={`/blog/${post.id}/`}>
-								<div class="meta">
-									<span class="cat">{post.data.category}</span>
-									<FormattedDate date={post.data.pubDate} />
-								</div>
-								<h2 class="title">{post.data.title}</h2>
-								<p class="excerpt">{post.data.description}</p>
+							<a
+								class:list={['chip', { on: name === tag }]}
+								href={`/tags/${encodeURIComponent(name)}/`}
+								aria-current={name === tag ? 'page' : undefined}
+							>
+								#{name} <small>{count}</small>
 							</a>
 						</li>
 					))
 				}
 			</ul>
-			<p class="back"><a href="/tags/">← 모든 태그</a></p>
+
+			<section class="tag-result" aria-labelledby="result-title">
+				<h2 id="result-title" class="num">#{tag} · {posts.length}개의 글</h2>
+				<ul class="rows">
+					{
+						posts.map((post) => (
+							<li>
+								<a href={`/blog/${post.id}/`}>
+									<span class="rt">{post.data.title}</span>
+									<time class="rd" datetime={post.data.pubDate.toISOString()}>{dotDate(post.data.pubDate)}</time>
+								</a>
+							</li>
+						))
+					}
+				</ul>
+			</section>
 		</main>
 		<Footer />
 	</body>
 </html>
 
 <style>
-	.page-head {
-		margin-bottom: 2rem;
-		padding-bottom: 1.25rem;
-		border-bottom: 1px solid var(--border);
+	.tag-result {
+		margin-top: var(--sp-8);
+		padding: var(--sp-5) var(--sp-5) var(--sp-2);
+		background: var(--bg-sub);
+		border: 1px solid var(--line);
+		border-radius: var(--r-card);
 	}
-	.kicker {
-		margin: 0 0 0.25rem;
-		font-size: 0.85rem;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--accent);
-		font-weight: 600;
+	.tag-result h2 {
+		margin-bottom: var(--sp-1);
+		font-size: var(--fs-body);
 	}
-	.page-head h1 { margin-bottom: 0.25rem; }
-	.count { margin: 0; color: var(--text-muted); }
-	.post-list {
-		list-style: none;
-		padding: 0;
-		margin: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 0.6rem;
+	.tag-result li:last-child a {
+		border-bottom: 0;
 	}
-	.post-list li a {
-		display: block;
-		padding: 1.2rem 1.35rem;
-		border: 1px solid var(--border);
-		border-radius: 14px;
-		background: var(--surface);
-		color: inherit;
-		text-decoration: none;
-		transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
-	}
-	.post-list li a:hover {
-		border-color: rgba(var(--accent-rgb), 0.5);
-		box-shadow: var(--box-shadow);
-		text-decoration: none;
-		transform: translateY(-2px);
-	}
-	.meta {
-		display: flex;
-		align-items: center;
-		gap: 0.6rem;
-		font-size: 0.85rem;
-		color: var(--text-muted);
-		margin-bottom: 0.35rem;
-	}
-	.cat { color: var(--accent); font-weight: 600; }
-	.title {
-		margin: 0 0 0.35rem;
-		font-size: 1.25rem;
-	}
-	.post-list li a:hover .title { color: var(--accent); }
-	.excerpt {
-		margin: 0;
-		color: var(--text-muted);
-		font-size: 0.95rem;
-		line-height: 1.6;
-	}
-	.back { margin-top: 2rem; font-weight: 600; }
 </style>

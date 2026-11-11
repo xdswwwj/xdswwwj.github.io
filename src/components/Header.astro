@@ -1,178 +1,233 @@
 ---
 import { SITE_TITLE } from '../consts';
 import HeaderLink from './HeaderLink.astro';
+
+const links = [
+	{ href: '/blog', label: '글' },
+	{ href: '/categories', label: '카테고리', match: ['tags'] },
+	{ href: '/about', label: '소개' },
+];
+const chevron =
+	'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
 ---
 
-<header>
-	<nav>
-		<h2><a href="/">{SITE_TITLE}</a></h2>
-		<div class="internal-links">
-			<HeaderLink href="/">홈</HeaderLink>
-			<HeaderLink href="/blog">글</HeaderLink>
-			<HeaderLink href="/categories">카테고리</HeaderLink>
-			<HeaderLink href="/about">소개</HeaderLink>
-		</div>
-		<div class="actions">
-			<button id="theme-toggle" type="button" aria-label="테마 전환">
-				<svg class="icon-sun" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-					<circle cx="12" cy="12" r="4"></circle>
-					<path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
-				</svg>
-				<svg class="icon-moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-					<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-				</svg>
-			</button>
-			<a class="social" href="https://github.com/xdswwwj" target="_blank" rel="noopener">
-				<span class="sr-only">GitHub</span>
-				<svg viewBox="0 0 16 16" aria-hidden="true" width="22" height="22"
-					><path
-						fill="currentColor"
-						d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"
-					></path></svg
-				>
-			</a>
-		</div>
+<header class="site-header">
+	<div class="wrap header-in">
+		<a class="logo" href="/">{SITE_TITLE}</a>
+		<nav class="nav" aria-label="주 메뉴">
+			{links.map((l) => <HeaderLink href={l.href} match={l.match}>{l.label}</HeaderLink>)}
+		</nav>
+		<button id="theme-toggle" class="icon-btn" type="button" aria-label="테마 바꾸기">
+			<svg class="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>
+			<svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path></svg>
+		</button>
+		<button
+			id="menu-toggle"
+			class="icon-btn menu-btn"
+			type="button"
+			aria-label="메뉴 열기"
+			aria-expanded="false"
+			aria-controls="drawer"
+		>
+			<svg class="icon-open" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
+			<svg class="icon-close" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+		</button>
+	</div>
+
+	<div class="dim" id="drawer-dim" hidden></div>
+	<nav class="drawer" id="drawer" aria-label="메뉴" hidden>
+		{
+			links.map((l) => (
+				<HeaderLink href={l.href} match={l.match}>
+					{l.label}
+					<Fragment set:html={chevron} />
+				</HeaderLink>
+			))
+		}
 	</nav>
 </header>
+
 <script is:inline>
 	(() => {
-		const btn = document.getElementById('theme-toggle');
-		if (!btn) return;
-		btn.addEventListener('click', () => {
-			const next =
-				document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-			document.documentElement.dataset.theme = next;
-			localStorage.setItem('theme', next);
+		const theme = document.getElementById('theme-toggle');
+		if (theme) {
+			theme.addEventListener('click', () => {
+				const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+				document.documentElement.dataset.theme = next;
+				localStorage.setItem('theme', next);
+			});
+		}
+
+		const btn = document.getElementById('menu-toggle');
+		const drawer = document.getElementById('drawer');
+		const dim = document.getElementById('drawer-dim');
+		if (!btn || !drawer || !dim) return;
+		const set = (open) => {
+			drawer.hidden = !open;
+			dim.hidden = !open;
+			btn.setAttribute('aria-expanded', String(open));
+			btn.setAttribute('aria-label', open ? '메뉴 닫기' : '메뉴 열기');
+		};
+		btn.addEventListener('click', () => set(drawer.hidden));
+		dim.addEventListener('click', () => set(false));
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape' && !drawer.hidden) {
+				set(false);
+				btn.focus();
+			}
+		});
+		matchMedia('(min-width: 720px)').addEventListener('change', (e) => {
+			if (e.matches) set(false);
 		});
 	})();
 </script>
+
 <style>
-	header {
-		position: sticky;
-		top: 0;
-		z-index: 50;
-		margin: 0;
-		padding: 0 1em;
-		background: rgba(var(--black), 0);
-		background-color: color-mix(in srgb, var(--bg) 80%, transparent);
-		backdrop-filter: saturate(180%) blur(12px);
-		-webkit-backdrop-filter: saturate(180%) blur(12px);
-		border-bottom: 1px solid var(--border);
+	.site-header {
+		position: relative;
+		z-index: 40;
+		background: var(--bg);
+		border-bottom: 1px solid var(--line);
 	}
-	nav {
+	.header-in {
+		position: relative;
+		z-index: 3;
+		background: var(--bg);
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		gap: 1rem;
-		max-width: 960px;
-		margin: 0 auto;
+		gap: var(--sp-2);
+		height: 56px;
 	}
-	h2 {
-		margin: 0;
-		font-size: 1.05rem;
+	.logo {
+		margin-right: auto;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		font-size: 17px;
 		font-weight: 700;
 		letter-spacing: -0.02em;
+		color: var(--ink);
 	}
-	nav h2 a {
-		color: var(--text);
-		text-decoration: none;
+	.logo:hover {
+		color: var(--ink);
 	}
-	nav h2 a:hover {
-		color: var(--accent);
-		text-decoration: none;
+
+	.nav {
+		display: none;
+		gap: var(--sp-1);
+		margin-right: var(--sp-2);
 	}
-	.internal-links {
-		display: flex;
-		gap: 0.25rem;
+	.nav :global(a) {
+		padding: 6px 10px;
+		border-radius: var(--r-btn);
+		font-size: var(--fs-ui);
+		font-weight: 500;
+		color: var(--soft);
+		transition: background-color 0.15s ease, color 0.15s ease;
 	}
-	nav a {
-		padding: 1rem 0.6rem;
-		color: var(--text-muted);
-		text-decoration: none;
-		font-size: 0.95rem;
-		border-bottom: 2px solid transparent;
-		transition: color 0.15s ease, border-color 0.15s ease;
+	.nav :global(a:hover) {
+		background: var(--fill);
+		color: var(--ink);
 	}
-	.internal-links a:hover {
-		color: var(--text);
-		text-decoration: none;
+	.nav :global(a[aria-current='page']) {
+		color: var(--ink);
+		font-weight: 700;
 	}
-	nav a.active {
-		color: var(--accent);
-		text-decoration: none;
-		border-bottom-color: var(--accent);
-	}
-	.actions {
-		display: flex;
-		align-items: center;
-		gap: 0.35rem;
-	}
-	#theme-toggle {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 38px;
-		height: 38px;
+
+	.icon-btn {
+		display: grid;
+		place-items: center;
+		flex: none;
+		width: 40px;
+		height: 40px;
 		padding: 0;
-		border: 1px solid var(--border);
-		border-radius: 10px;
-		background: var(--surface-2);
-		color: var(--text-muted);
+		border: 0;
+		border-radius: var(--r-btn);
+		background: transparent;
+		color: var(--soft);
 		cursor: pointer;
-		transition: color 0.15s ease, border-color 0.15s ease,
-			background 0.15s ease;
+		transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
 	}
-	#theme-toggle:hover {
-		color: var(--accent);
-		border-color: var(--accent);
-		background: var(--glow);
+	.icon-btn:hover {
+		background: var(--fill);
+		color: var(--ink);
+	}
+	.icon-btn:active {
+		transform: scale(0.96);
 	}
 	.icon-sun,
-	.icon-moon {
+	.icon-moon,
+	.icon-close {
 		display: none;
 	}
-	:global(html[data-theme='light']) .icon-sun {
-		display: block;
-	}
+	:global(html[data-theme='light']) .icon-sun,
 	:global(html[data-theme='dark']) .icon-moon {
 		display: block;
 	}
-	.social {
-		display: inline-flex;
+	.menu-btn[aria-expanded='true'] .icon-open {
+		display: none;
+	}
+	.menu-btn[aria-expanded='true'] .icon-close {
+		display: block;
+	}
+
+	/* 폰 서랍 메뉴 */
+	.drawer {
+		position: absolute;
+		top: 100%;
+		left: 0;
+		right: 0;
+		z-index: 2;
+		padding: var(--sp-2) var(--gutter) var(--sp-5);
+		background: var(--bg);
+		border-bottom: 1px solid var(--line);
+		box-shadow: var(--shadow-float);
+	}
+	.drawer[hidden],
+	.dim[hidden] {
+		display: none;
+	}
+	.drawer :global(a) {
+		display: flex;
 		align-items: center;
-		justify-content: center;
-		width: 38px;
-		height: 38px;
-		padding: 0;
-		color: var(--text-muted);
+		justify-content: space-between;
+		height: 52px;
+		padding: 0 var(--sp-3);
 		border-radius: 10px;
-		transition: color 0.15s ease, background 0.15s ease;
+		font-size: 17px;
+		font-weight: 600;
+		color: var(--ink-2);
 	}
-	.social:hover {
-		color: var(--accent);
-		background: var(--glow);
+	.drawer :global(a:hover) {
+		background: var(--fill);
 	}
-	@media (max-width: 720px) {
-		header {
-			padding: 0 0.6rem;
+	.drawer :global(a[aria-current='page']) {
+		background: var(--fill);
+		color: var(--ink);
+		font-weight: 700;
+	}
+	.drawer :global(svg) {
+		color: var(--faint);
+	}
+	.dim {
+		position: fixed;
+		inset: 0;
+		z-index: 1;
+		background: var(--dim);
+	}
+
+	@media (min-width: 720px) {
+		.header-in {
+			height: 64px;
 		}
-		nav {
-			gap: 0.4rem;
+		.nav {
+			display: flex;
 		}
-		h2 {
-			font-size: 0.95rem;
-			white-space: nowrap;
-		}
-		nav a {
-			padding: 0.85rem 0.35rem;
-			font-size: 0.85rem;
-			white-space: nowrap;
-		}
-		.internal-links {
-			gap: 0;
-		}
-		.social {
-			display: none;
+		.menu-btn,
+		.drawer,
+		.dim {
+			display: none !important;
 		}
 	}
 </style>
