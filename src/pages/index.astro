@@ -1,126 +1,20 @@
 ---
-import { formatKoreanDate, formatMonthDay, getSortedPosts, groupByMonth, readingTime } from '../lib/posts';
 import BaseHead from '../components/BaseHead.astro';
-import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
-import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+import Footer from '../components/Footer.astro';
+import PostIndex from '../components/PostIndex.astro';
+import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
+import { getSortedPosts } from '../lib/posts';
 
-const HOME_LIMIT = 10;
-const allPosts = await getSortedPosts();
-const months = groupByMonth(allPosts.slice(0, HOME_LIMIT));
+const posts = await getSortedPosts();
 ---
 
 <!doctype html>
 <html lang="ko">
-	<head>
-		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
-	</head>
+	<head><BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} /></head>
 	<body>
 		<Header />
-		<main class="wrap">
-			<section class="intro">
-				<h1 class="sr-only">{SITE_TITLE}</h1>
-				<p class="lead">{SITE_DESCRIPTION}</p>
-				<a class="more" href="/about">
-					소개 더 보기
-					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
-				</a>
-			</section>
-
-			{
-				months.map(({ year, month, posts }) => (
-					<section class="month" aria-label={`${year}년 ${month}월`}>
-						<h2 class="month-t num">
-							<span>{year}년 {month}월</span>
-							<small>{posts.length}개</small>
-						</h2>
-						<ul class="post-rows">
-							{posts.map((post) => {
-								const d = post.data.pubDate;
-								return (
-									<li class="post-row">
-										<a href={`/blog/${post.id}/`}>
-											<time class="d num" datetime={d.toISOString()}>
-												{formatMonthDay(d)}
-											</time>
-											<span class="t">{post.data.title}</span>
-											<span class="s">{post.data.description}</span>
-											<span class="m num">
-												<span class="pd">{formatKoreanDate(d, { withYear: false })}</span>
-												<span class="dot" />
-												<span>{post.data.category}</span>
-												<span class="dot" />
-												<span>{readingTime(post.body).replace('약 ', '')}</span>
-											</span>
-										</a>
-									</li>
-								);
-							})}
-						</ul>
-					</section>
-				))
-			}
-
-			{allPosts.length === 0 && <p class="empty">아직 쓴 글이 없어요.</p>}
-
-			<a class="btn-sub" href="/blog">전체 글 보기</a>
-		</main>
+		<main><PostIndex posts={posts} all={posts} /></main>
 		<Footer />
 	</body>
 </html>
-
-<style>
-	.intro {
-		padding: var(--sp-10) 0 var(--sp-2);
-	}
-	.lead {
-		font-size: var(--fs-lead);
-		font-weight: 600;
-		line-height: 1.5;
-		letter-spacing: -0.02em;
-		color: var(--ink);
-	}
-	.more {
-		display: inline-flex;
-		align-items: center;
-		gap: 2px;
-		margin-top: var(--sp-3);
-		font-size: var(--fs-ui);
-		font-weight: 500;
-		color: var(--accent);
-	}
-	.more:hover {
-		color: var(--accent-hover);
-	}
-	.month {
-		margin-top: var(--sp-10);
-	}
-	.month-t {
-		display: flex;
-		justify-content: space-between;
-		align-items: baseline;
-		padding-bottom: var(--sp-3);
-		border-bottom: 1px solid var(--line);
-		font-size: var(--fs-sub);
-		font-weight: 600;
-		color: var(--soft);
-		letter-spacing: 0;
-	}
-	.month-t small {
-		font-size: var(--fs-sub);
-		font-weight: 500;
-		color: var(--soft);
-	}
-	.empty {
-		padding: var(--sp-10) 0;
-		color: var(--soft);
-	}
-	@media (min-width: 720px) {
-		.intro {
-			padding: var(--sp-16) 0 var(--sp-4);
-		}
-		.month {
-			margin-top: var(--sp-12);
-		}
-	}
-</style>
