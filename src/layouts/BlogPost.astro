@@ -6,7 +6,7 @@ import BaseHead from '../components/BaseHead.astro';
 import Cover from '../components/Cover.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
-import { formatDotDate } from '../lib/posts';
+import { formatDotDate, getSortedPosts } from '../lib/posts';
 
 type Heading = { depth: number; slug: string; text: string };
 type Props = Omit<CollectionEntry<'blog'>['data'], 'draft' | 'tags'> & {
@@ -20,10 +20,16 @@ type Props = Omit<CollectionEntry<'blog'>['data'], 'draft' | 'tags'> & {
 	related?: CollectionEntry<'blog'>[];
 };
 
-const { title, description, pubDate, updatedDate, heroImage, category, tags = [], readingTime, ogImage, newer, older, related = [] } = Astro.props;
+const { title, description, pubDate, updatedDate, heroImage, category, tags = [], readingTime, headings = [], ogImage, newer, older, related = [] } = Astro.props;
 const isArticle = readingTime !== undefined;
 const catHref = `/categories/${encodeURIComponent(category)}/`;
 const seed = Astro.url.pathname;
+// 왼쪽 메뉴 — 목록과 같은 분류 + 이 글의 차례
+const all = await getSortedPosts();
+const counts = new Map<string, number>();
+for (const p of all) counts.set(p.data.category, (counts.get(p.data.category) ?? 0) + 1);
+const cats = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+const toc = headings.filter((h) => h.depth === 2);
 ---
 
 <html lang="ko">
@@ -37,7 +43,7 @@ const seed = Astro.url.pathname;
 			<section class:list={['post-hero', { plain: !isArticle }]}>
 				{isArticle && <Cover image={heroImage} seed={seed} class="post-hero-bg" eager />}
 				{isArticle && <div class="post-hero-shade" />}
-				<div class="col post-hero-in">
+				<div class="wrap post-grid post-hero-in"><div aria-hidden="true" /><div>
 					{isArticle && <a class="badge" href={catHref}>{category}</a>}
 					<h1>{title}</h1>
 					<p class="post-lead">{description}</p>
@@ -47,24 +53,43 @@ const seed = Astro.url.pathname;
 							<p class="role">풀스택 개발자 · {formatDotDate(pubDate)}{readingTime ? ` · ${readingTime}분 읽기` : ''}</p>
 						</div>
 					)}
-				</div>
+				</div></div>
 			</section>
 
-			<article class="col prose">
-				<slot />
-			</article>
+			<div class="wrap post-grid">
+				<aside class="side-menu" aria-label="메뉴">
+					<div class="side-sticky">
+						<p class="eyebrow">Categories</p>
+						<ul>
+							<li><a href="/blog/"><span>All</span><span class="n">{all.length}</span></a></li>
+							{cats.map(([c, n]) => (
+								<li><a href={`/categories/${encodeURIComponent(c)}/`} class:list={[{ on: isArticle && c === category }]}><span>{c}</span><span class="n">{n}</span></a></li>
+							))}
+						</ul>
+						{toc.length > 1 && (
+							<>
+								<p class="eyebrow toc-head">On this page</p>
+								<ul class="toc">{toc.map((h) => <li><a href={`#${h.slug}`}>{h.text}</a></li>)}</ul>
+							</>
+						)}
+					</div>
+				</aside>
+				<article class="prose">
+					<slot />
+				</article>
+			</div>
 
 			{isArticle && tags.length > 0 && (
-				<div class="col post-tags">
+				<div class="wrap post-grid"><div /><div class="post-tags">
 					{tags.map((t) => <a href={`/tags/${encodeURIComponent(t)}/`}>#{t}</a>)}
-				</div>
+				</div></div>
 			)}
 
 			{isArticle && (newer || older) && (
-				<nav class="col post-nav" aria-label="이전·다음 글">
+				<div class="wrap post-grid"><div /><nav class="post-nav" aria-label="이전·다음 글">
 					{older ? <a href={`/blog/${older.id}/`}><span class="lbl">← 이전 글</span><span class="t">{older.data.title}</span></a> : <span />}
 					{newer ? <a class="next" href={`/blog/${newer.id}/`}><span class="lbl">다음 글 →</span><span class="t">{newer.data.title}</span></a> : <span />}
-				</nav>
+				</nav></div>
 			)}
 
 			{isArticle && related.length > 0 && (
@@ -107,6 +132,18 @@ const seed = Astro.url.pathname;
 </html>
 
 <style>
+	/* 왼쪽 메뉴 220 + 본문 (목록 화면과 같은 줄) */
+	.post-grid { display: grid; grid-template-columns: 220px minmax(0, 760px); gap: 64px; }
+	.side-menu { padding-top: 72px; }
+	.side-sticky { position: sticky; top: 96px; }
+	.side-menu ul { list-style: none; margin: 14px 0 0; padding: 0; }
+	.side-menu a { display: flex; justify-content: space-between; gap: 8px; padding: 9px 14px; border-left: 2px solid transparent; font-size: 14px; color: var(--ink-2); }
+	.side-menu a:hover { color: var(--ink); }
+	.side-menu a.on { border-left-color: var(--ink); background: var(--panel); color: var(--ink); }
+	.side-menu .n { font-size: 12.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
+	.toc-head { margin-top: 36px; }
+	.toc a { display: block; padding: 6px 14px; font-size: 13.5px; line-height: 1.5; color: var(--soft); }
+
 	.post-hero { position: relative; display: flex; align-items: flex-end; min-height: 560px; border-bottom: 1px solid var(--line-soft); }
 	.post-hero.plain { min-height: 0; }
 	.post-hero :global(.post-hero-bg) { position: absolute; inset: 0; }
@@ -159,6 +196,11 @@ const seed = Astro.url.pathname;
 	.rel h3 { margin: 14px 0 0; font-size: 18px; line-height: 1.45; font-weight: 500; color: var(--ink); }
 	.rel:hover h3 { text-decoration: underline; text-underline-offset: 4px; }
 
+	@media (max-width: 960px) {
+		.post-grid { grid-template-columns: minmax(0, 1fr); gap: 0; }
+		.post-grid > :first-child:is(div[aria-hidden], div:empty) { display: none; }
+		.side-menu { display: none; }
+	}
 	@media (max-width: 760px) {
 		.post-hero { min-height: 460px; }
 		.post-hero-in { padding-top: 100px; padding-bottom: 40px; }
