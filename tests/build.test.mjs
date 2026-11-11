@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import {
 	existsSync,
 	mkdirSync,
@@ -16,12 +17,29 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CONTENT_DIR = join(ROOT, 'src', 'content', 'blog');
 const DIST_DIR = join(ROOT, 'dist');
-const FIXTURE_DIR = join(CONTENT_DIR, '__qa_temp_fixtures__');
+// 실행마다 고유한 이름(소문자 hex: 글 주소 slug 와 똑같이 유지됨). 기존 폴더와 겹치지 않는다.
+const FIXTURE_NAME = `__qa_temp_fixtures_${process.pid}_${randomBytes(6).toString('hex')}__`;
+const FIXTURE_DIR = join(CONTENT_DIR, FIXTURE_NAME);
+let fixtureCreatedByThisRun = false;
 
-// 비정상 종료 시에도 임시 fixture 가 남지 않도록 보장
+/** 이번 실행이 직접 만든 폴더만 지운다. */
+function cleanupFixture() {
+	if (!fixtureCreatedByThisRun) return;
+	rmSync(FIXTURE_DIR, { recursive: true, force: true });
+	fixtureCreatedByThisRun = false;
+}
+
+/** recursive 없이 만들어서, 같은 이름 폴더가 이미 있으면 EEXIST 로 멈춘다 (덮어쓰지 않음). */
+function createFixtureDir() {
+	mkdirSync(FIXTURE_DIR);
+	fixtureCreatedByThisRun = true;
+	mkdirSync(join(FIXTURE_DIR, '2026', '11'), { recursive: true });
+}
+
+// 비정상 종료 시에도 이번 실행의 임시 fixture 가 남지 않도록 보장
 process.on('exit', () => {
 	try {
-		rmSync(FIXTURE_DIR, { recursive: true, force: true });
+		cleanupFixture();
 	} catch {}
 });
 
@@ -220,7 +238,7 @@ describe('빌드 결과물 및 경계 경우 검증', () => {
 		const draftSentinel = 'QA_DRAFT_ONLY_SENTINEL_987654';
 
 		try {
-			mkdirSync(join(FIXTURE_DIR, '2026', '11'), { recursive: true });
+			createFixtureDir();
 
 			// (a) 100자 넘는 제목 + description 빈 값 + 태그 0개 (빈 배열)
 			writeFileSync(
@@ -304,7 +322,7 @@ ${draftSentinel}
 				join(
 					DIST_DIR,
 					'blog',
-					'__qa_temp_fixtures__',
+					FIXTURE_NAME,
 					'2026',
 					'11',
 					'2026-11-09-long-title-empty-desc',
@@ -331,7 +349,7 @@ ${draftSentinel}
 				join(
 					DIST_DIR,
 					'blog',
-					'__qa_temp_fixtures__',
+					FIXTURE_NAME,
 					'2026',
 					'11',
 					'2026-11-10-unbroken-word-ten-tags',
@@ -349,14 +367,14 @@ ${draftSentinel}
 				);
 			}
 		} finally {
-			rmSync(FIXTURE_DIR, { recursive: true, force: true });
+			cleanupFixture();
 			runBuild();
 		}
 
 		// 정리 확인: 실제 content 폴더에 임시 fixture 가 남지 않고 깨끗한 dist 도 모든 검사를 통과해야 함
 		assert.equal(existsSync(FIXTURE_DIR), false, '임시 fixture 폴더가 지워져야 합니다.');
 		assert.equal(
-			existsSync(join(DIST_DIR, 'blog', '__qa_temp_fixtures__')),
+			existsSync(join(DIST_DIR, 'blog', FIXTURE_NAME)),
 			false,
 			'재빌드 뒤 dist 에 임시 fixture 흔적이 없어야 합니다.',
 		);

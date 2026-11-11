@@ -1,5 +1,5 @@
 ---
-import { getSortedPosts, readingTime } from '../../lib/posts';
+import { formatKoreanDate, formatMonthDay, getSortedPosts, readingTime } from '../../lib/posts';
 import BaseHead from '../../components/BaseHead.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
@@ -19,7 +19,6 @@ export async function getStaticPaths() {
 }
 
 const { category, posts } = Astro.props;
-const pad = (n: number) => String(n).padStart(2, '0');
 ---
 
 <!doctype html>
@@ -46,12 +45,12 @@ const pad = (n: number) => String(n).padStart(2, '0');
 							<li class="post-row">
 								<a href={`/blog/${post.id}/`}>
 									<time class="d num" datetime={d.toISOString()}>
-										{pad(d.getMonth() + 1)}.{pad(d.getDate())}
+										{formatMonthDay(d)}
 									</time>
 									<span class="t">{post.data.title}</span>
 									<span class="s">{post.data.description}</span>
 									<span class="m num">
-										<span class="pd">{d.getFullYear()}년 {d.getMonth() + 1}월 {d.getDate()}일</span>
+										<span class="pd">{formatKoreanDate(d)}</span>
 										<span class="dot" />
 										<span>{readingTime(post.body).replace('약 ', '')}</span>
 									</span>

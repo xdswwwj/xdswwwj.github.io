@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
+import { execFileSync } from 'node:child_process';
 import {
+	dateParts,
+	formatDotDate,
+	formatKoreanDate,
+	formatMonthDay,
 	getPrevNext,
 	getRelated,
 	groupByMonth,
@@ -67,7 +72,7 @@ describe('groupByMonth', () => {
 
 	test('연도가 바뀌는 경우 연·월별로 나누고 최신 달부터 정렬한다', () => {
 		const dec2025a = makePost('2025-12-a', { pubDate: '2025-12-10T00:00:00Z' });
-		const dec2025b = makePost('2025-12-b', { pubDate: '2025-12-31T23:30:00Z' });
+		const dec2025b = makePost('2025-12-b', { pubDate: '2025-12-31T14:30:00Z' }) // 한국 시간 12-31 23:30;
 		const jan2026 = makePost('2026-01', { pubDate: '2026-01-01T00:00:00Z' });
 		const jun2024 = makePost('2024-06', { pubDate: '2024-06-15T00:00:00Z' });
 
@@ -85,6 +90,43 @@ describe('groupByMonth', () => {
 			],
 		);
 	});
+});
+
+describe('시간대 통일 (월 묶기 = 날짜 표시)', () => {
+	test('날짜만 적은 글(2026-11-01)은 11월에 묶이고 11.01 로 표시된다', () => {
+		const post = makePost('nov-first', { pubDate: '2026-11-01' });
+		const [group] = groupByMonth([post]);
+		assert.equal(group.month, 11);
+		assert.equal(formatMonthDay(post.data.pubDate), '11.01');
+		assert.equal(formatDotDate(post.data.pubDate), '2026.11.01');
+		assert.equal(formatKoreanDate(post.data.pubDate), '2026년 11월 1일');
+		assert.equal(formatKoreanDate(post.data.pubDate, { withYear: false }), '11월 1일');
+	});
+
+	test('한국 시간 기준 달 경계: 묶음 달과 표시 날짜가 항상 같은 달이다', () => {
+		const edge = makePost('edge', { pubDate: '2026-10-31T15:30:00Z' }); // 한국 시간 11-01 00:30
+		const [group] = groupByMonth([edge]);
+		assert.deepEqual(dateParts(edge.data.pubDate), { year: 2026, month: 11, day: 1 });
+		assert.equal(group.month, 11);
+		assert.equal(formatMonthDay(edge.data.pubDate), '11.01');
+	});
+
+	for (const tz of ['America/Los_Angeles', 'UTC', 'Asia/Seoul', 'Pacific/Kiritimati']) {
+		test(`빌드 기계 시간대(${tz})가 달라도 결과가 같다`, () => {
+			const script = `
+				import { groupByMonth, formatMonthDay } from './src/lib/posts-pure.mjs';
+				const d = new Date('2026-11-01');
+				const [g] = groupByMonth([{ id: 'a', data: { pubDate: d, category: 'x' } }]);
+				process.stdout.write(g.year + '-' + g.month + ' ' + formatMonthDay(d));
+			`;
+			const out = execFileSync(process.execPath, ['--input-type=module', '-e', script], {
+				cwd: new URL('..', import.meta.url),
+				env: { ...process.env, TZ: tz },
+				encoding: 'utf8',
+			});
+			assert.equal(out, '2026-11 11.01');
+		});
+	}
 });
 
 describe('getPrevNext', () => {

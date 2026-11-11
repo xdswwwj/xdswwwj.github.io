@@ -1,5 +1,5 @@
 ---
-import { getSortedPosts } from '../../lib/posts';
+import { formatDotDate, getSortedPosts } from '../../lib/posts';
 import BaseHead from '../../components/BaseHead.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
@@ -22,8 +22,6 @@ export async function getStaticPaths() {
 }
 
 const { tag, allTags, posts } = Astro.props;
-const pad = (n: number) => String(n).padStart(2, '0');
-const dotDate = (d: Date) => `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`;
 ---
 
 <!doctype html>
@@ -62,7 +60,7 @@ const dotDate = (d: Date) => `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(
 							<li>
 								<a href={`/blog/${post.id}/`}>
 									<span class="rt">{post.data.title}</span>
-									<time class="rd" datetime={post.data.pubDate.toISOString()}>{dotDate(post.data.pubDate)}</time>
+									<time class="rd" datetime={post.data.pubDate.toISOString()}>{formatDotDate(post.data.pubDate)}</time>
 								</a>
 							</li>
 						))

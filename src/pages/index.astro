@@ -1,5 +1,5 @@
 ---
-import { getSortedPosts, groupByMonth, readingTime } from '../lib/posts';
+import { formatKoreanDate, formatMonthDay, getSortedPosts, groupByMonth, readingTime } from '../lib/posts';
 import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
@@ -8,7 +8,6 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 const HOME_LIMIT = 10;
 const allPosts = await getSortedPosts();
 const months = groupByMonth(allPosts.slice(0, HOME_LIMIT));
-const pad = (n: number) => String(n).padStart(2, '0');
 ---
 
 <!doctype html>
@@ -42,12 +41,12 @@ const pad = (n: number) => String(n).padStart(2, '0');
 									<li class="post-row">
 										<a href={`/blog/${post.id}/`}>
 											<time class="d num" datetime={d.toISOString()}>
-												{pad(d.getMonth() + 1)}.{pad(d.getDate())}
+												{formatMonthDay(d)}
 											</time>
 											<span class="t">{post.data.title}</span>
 											<span class="s">{post.data.description}</span>
 											<span class="m num">
-												<span class="pd">{d.getMonth() + 1}월 {d.getDate()}일</span>
+												<span class="pd">{formatKoreanDate(d, { withYear: false })}</span>
 												<span class="dot" />
 												<span>{post.data.category}</span>
 												<span class="dot" />

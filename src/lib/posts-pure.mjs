@@ -1,3 +1,45 @@
+/**
+ * Every date on the site (month groups, list dates, post dates) is read in this one
+ * time zone, so the build machine's local time zone never changes what readers see.
+ */
+export const SITE_TIME_ZONE = 'Asia/Seoul';
+
+const partsFormatter = new Intl.DateTimeFormat('en-US', {
+	timeZone: SITE_TIME_ZONE,
+	year: 'numeric',
+	month: 'numeric',
+	day: 'numeric',
+});
+
+/** Calendar year/month/day of a date in SITE_TIME_ZONE. */
+export function dateParts(date) {
+	const parts = {};
+	for (const { type, value } of partsFormatter.formatToParts(date)) {
+		if (type === 'year' || type === 'month' || type === 'day') parts[type] = Number(value);
+	}
+	return parts;
+}
+
+const pad2 = (n) => String(n).padStart(2, '0');
+
+/** "11.01" */
+export function formatMonthDay(date) {
+	const { month, day } = dateParts(date);
+	return `${pad2(month)}.${pad2(day)}`;
+}
+
+/** "2026.11.01" */
+export function formatDotDate(date) {
+	const { year, month, day } = dateParts(date);
+	return `${year}.${pad2(month)}.${pad2(day)}`;
+}
+
+/** "2026년 11월 1일" (withYear: false → "11월 1일") */
+export function formatKoreanDate(date, { withYear = true } = {}) {
+	const { year, month, day } = dateParts(date);
+	return withYear ? `${year}년 ${month}월 ${day}일` : `${month}월 ${day}일`;
+}
+
 export const newestFirst = (a, b) =>
 	b.data.pubDate.valueOf() - a.data.pubDate.valueOf();
 
@@ -17,12 +59,11 @@ export async function getPrevNext(id, posts = []) {
 	};
 }
 
-/** Newest months first, using UTC so build machine timezone does not change groups. */
+/** Newest months first, in SITE_TIME_ZONE (same zone as every displayed date). */
 export function groupByMonth(posts) {
 	const groups = new Map();
 	for (const post of [...posts].sort(newestFirst)) {
-		const year = post.data.pubDate.getUTCFullYear();
-		const month = post.data.pubDate.getUTCMonth() + 1;
+		const { year, month } = dateParts(post.data.pubDate);
 		const key = `${year}-${month}`;
 		if (!groups.has(key)) groups.set(key, { year, month, posts: [] });
 		groups.get(key).posts.push(post);

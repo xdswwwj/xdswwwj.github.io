@@ -1,5 +1,5 @@
 ---
-import { getSortedPosts, groupByMonth, type PostMonth } from '../../lib/posts';
+import { formatMonthDay, getSortedPosts, groupByMonth, type PostMonth } from '../../lib/posts';
 import BaseHead from '../../components/BaseHead.astro';
 import Footer from '../../components/Footer.astro';
 import Header from '../../components/Header.astro';
@@ -15,7 +15,6 @@ for (const m of groupByMonth(posts)) {
 	y.months.push(m);
 	y.count += m.posts.length;
 }
-const pad = (n: number) => String(n).padStart(2, '0');
 ---
 
 <!doctype html>
@@ -55,7 +54,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
 											<a href={`/blog/${post.id}/`}>
 												<span class="rt">{post.data.title}</span>
 												<time class="rd" datetime={post.data.pubDate.toISOString()}>
-													{pad(post.data.pubDate.getMonth() + 1)}.{pad(post.data.pubDate.getDate())}
+													{formatMonthDay(post.data.pubDate)}
 												</time>
 											</a>
 										</li>

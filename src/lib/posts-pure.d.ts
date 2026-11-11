@@ -25,3 +25,9 @@ export function getRelated<T extends PostLike>(
 	n?: number,
 	posts?: T[],
 ): Promise<T[]>;
+
+export const SITE_TIME_ZONE: string;
+export function dateParts(date: Date): { year: number; month: number; day: number };
+export function formatMonthDay(date: Date): string;
+export function formatDotDate(date: Date): string;
+export function formatKoreanDate(date: Date, options?: { withYear?: boolean }): string;

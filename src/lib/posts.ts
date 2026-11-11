@@ -7,6 +7,14 @@ import {
 	getRelated as calcRelated,
 } from './posts-pure.mjs';
 
+export {
+	SITE_TIME_ZONE,
+	dateParts,
+	formatMonthDay,
+	formatDotDate,
+	formatKoreanDate,
+} from './posts-pure.mjs';
+
 type Post = CollectionEntry<'blog'>;
 export type PostMonth = { year: number; month: number; posts: Post[] };
 
@@ -26,7 +34,7 @@ export async function getPrevNext(id: string, posts?: Post[]) {
 	return calcPrevNext(id, posts ?? await getSortedPosts());
 }
 
-/** Newest months first, using UTC so build machine timezone does not change groups. */
+/** Newest months first, in SITE_TIME_ZONE (same zone as every displayed date). */
 export function groupByMonth(posts: Post[]): PostMonth[] {
 	return calcGroupByMonth(posts);
 }

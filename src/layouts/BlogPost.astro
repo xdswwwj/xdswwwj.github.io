@@ -5,6 +5,7 @@ import Footer from '../components/Footer.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import Header from '../components/Header.astro';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+import { formatDotDate } from '../lib/posts';
 
 type Heading = { depth: number; slug: string; text: string };
 
@@ -38,8 +39,6 @@ const {
 const isArticle = readingTime !== undefined;
 const toc = isArticle ? headings.filter((h) => h.depth === 2 || h.depth === 3) : [];
 const hasToc = toc.length > 1;
-const pad = (n: number) => String(n).padStart(2, '0');
-const dotDate = (d: Date) => `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`;
 const categoryHref = `/categories/${encodeURIComponent(category)}/`;
 ---
 
@@ -191,7 +190,7 @@ const categoryHref = `/categories/${encodeURIComponent(category)}/`;
 								<li>
 									<a href={`/blog/${r.id}/`}>
 										<span class="rt">{r.data.title}</span>
-										<span class="rd">{dotDate(r.data.pubDate)}</span>
+										<span class="rd">{formatDotDate(r.data.pubDate)}</span>
 									</a>
 								</li>
 							))}
