@@ -1,183 +1,20 @@
 ---
-import { formatMonthDay, getSortedPosts, groupByMonth, type PostMonth } from '../../lib/posts';
 import BaseHead from '../../components/BaseHead.astro';
-import Footer from '../../components/Footer.astro';
 import Header from '../../components/Header.astro';
-import { SITE_DESCRIPTION, SITE_TITLE } from '../../consts';
+import Footer from '../../components/Footer.astro';
+import PostIndex from '../../components/PostIndex.astro';
+import { SITE_TITLE, SITE_DESCRIPTION } from '../../consts';
+import { getSortedPosts } from '../../lib/posts';
 
 const posts = await getSortedPosts();
-
-// 연도 → 월 순서로 묶기 (groupByMonth 가 이미 최신순)
-const years: { year: number; count: number; months: PostMonth[] }[] = [];
-for (const m of groupByMonth(posts)) {
-	let y = years.find((x) => x.year === m.year);
-	if (!y) years.push((y = { year: m.year, count: 0, months: [] }));
-	y.months.push(m);
-	y.count += m.posts.length;
-}
 ---
 
 <!doctype html>
 <html lang="ko">
-	<head>
-		<BaseHead title={`글 · ${SITE_TITLE}`} description={SITE_DESCRIPTION} />
-	</head>
+	<head><BaseHead title={`글 · ${SITE_TITLE}`} description={SITE_DESCRIPTION} /></head>
 	<body>
 		<Header />
-		<main class="wrap">
-			<header class="page-head">
-				<h1>전체 글</h1>
-				<p class="num">지금까지 {posts.length}개의 글을 썼어요.</p>
-				<label class="search">
-					<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
-					<span class="sr-only">글 찾기</span>
-					<input id="search-input" type="search" placeholder="제목·요약·카테고리로 찾기" autocomplete="off" />
-				</label>
-			</header>
-
-			{
-				years.map((y) => (
-					<section class="ar-year" data-group>
-						<div class="ar-year-t">
-							<h2 class="num">{y.year}</h2>
-							<small class="num">{y.count}개</small>
-						</div>
-						{y.months.map((m) => (
-							<div class="ar-month" data-group>
-								<h3 class="ar-month-t num">{m.month}월</h3>
-								<ul class="rows">
-									{m.posts.map((post) => (
-										<li
-											data-item
-											data-q={`${post.data.title} ${post.data.description} ${post.data.category}`.toLowerCase()}
-										>
-											<a href={`/blog/${post.id}/`}>
-												<span class="rt">{post.data.title}</span>
-												<time class="rd" datetime={post.data.pubDate.toISOString()}>
-													{formatMonthDay(post.data.pubDate)}
-												</time>
-											</a>
-										</li>
-									))}
-								</ul>
-							</div>
-						))}
-					</section>
-				))
-			}
-			<p class="empty" id="empty" hidden>찾는 글이 없어요. 다른 낱말로 찾아보세요.</p>
-		</main>
+		<main><PostIndex posts={posts} all={posts} /></main>
 		<Footer />
-		<script is:inline>
-			(() => {
-				const input = document.getElementById('search-input');
-				const empty = document.getElementById('empty');
-				const items = [...document.querySelectorAll('[data-item]')];
-				const groups = [...document.querySelectorAll('[data-group]')].reverse();
-				if (!input) return;
-				input.addEventListener('input', () => {
-					const q = input.value.trim().toLowerCase();
-					let visible = 0;
-					items.forEach((el) => {
-						const show = !q || el.dataset.q.includes(q);
-						el.hidden = !show;
-						if (show) visible++;
-					});
-					// 안쪽(월)부터 바깥(연도) 순으로, 보이는 글이 없는 묶음은 숨겨요
-					groups.forEach((g) => {
-						g.hidden = !g.querySelector('[data-item]:not([hidden])');
-					});
-					empty.hidden = visible !== 0;
-				});
-			})();
-		</script>
 	</body>
 </html>
-
-<style>
-	.search {
-		display: flex;
-		align-items: center;
-		gap: var(--sp-2);
-		height: 40px;
-		margin-top: var(--sp-5);
-		padding: 0 var(--sp-3);
-		border-radius: var(--r-btn);
-		background: var(--fill);
-		color: var(--faint);
-	}
-	.search:focus-within {
-		outline: 2px solid var(--accent);
-		outline-offset: 0;
-	}
-	.search svg {
-		flex: none;
-	}
-	.search input {
-		flex: 1;
-		min-width: 0;
-		height: 100%;
-		padding: 0;
-		border: 0;
-		outline: 0;
-		background: transparent;
-		color: var(--ink);
-		/* 16px 이상이어야 iOS 가 확대하지 않아요 */
-		font-size: 16px;
-	}
-	.search input::placeholder {
-		color: var(--faint);
-	}
-	.search input::-webkit-search-cancel-button {
-		cursor: pointer;
-	}
-
-	.ar-year {
-		margin-top: var(--sp-10);
-	}
-	.ar-year-t {
-		display: flex;
-		align-items: baseline;
-		gap: var(--sp-2);
-		padding-bottom: var(--sp-3);
-		border-bottom: 2px solid var(--ink);
-	}
-	.ar-year-t h2 {
-		font-size: var(--fs-h2);
-	}
-	.ar-year-t small {
-		font-size: var(--fs-sub);
-		color: var(--soft);
-	}
-	.ar-month {
-		display: grid;
-		grid-template-columns: 1fr;
-	}
-	.ar-month-t {
-		padding: var(--sp-5) 0 var(--sp-1);
-		font-size: var(--fs-sub);
-		font-weight: 600;
-		color: var(--soft);
-		letter-spacing: 0;
-	}
-	[hidden] {
-		display: none !important;
-	}
-	.empty {
-		padding: var(--sp-10) 0;
-		text-align: center;
-		color: var(--soft);
-	}
-	@media (min-width: 720px) {
-		.ar-year {
-			margin-top: var(--sp-12);
-		}
-		.ar-month {
-			grid-template-columns: 64px 1fr;
-			column-gap: var(--sp-4);
-		}
-		.ar-month-t {
-			padding: 14px 0 0;
-		}
-	}
-</style>

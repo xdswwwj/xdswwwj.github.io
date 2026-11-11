@@ -1,80 +1,41 @@
 ---
-import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
-
+// 짙은 회색 발바닥 — 작은 대문자 머리글 아래 링크 묶음
+import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
 const year = new Date().getFullYear();
 ---
 
 <footer class="site-footer">
-	<div class="wrap footer-in">
-		<div>
-			<div class="f-name">{SITE_TITLE}</div>
-			<p class="f-desc">{SITE_DESCRIPTION}</p>
+	<div class="wrap foot-in">
+		<div class="foot-brand">
+			<p class="logo">dev<span>-do</span></p>
+			<p class="desc">{SITE_DESCRIPTION}</p>
 		</div>
-		<div class="f-right">
-			<nav aria-label="바닥 링크">
-				<a href="/about">소개</a>
-				<a href="/rss.xml">RSS</a>
-				<a href="https://github.com/xdswwwj" target="_blank" rel="noopener">GitHub</a>
-			</nav>
-			<div class="f-copy num">© {year} {SITE_TITLE}</div>
+		<div class="foot-col">
+			<p class="eyebrow">Blog</p>
+			<a href="/blog/">모든 글</a>
+			<a href="/categories/">분류</a>
+			<a href="/tags/">태그</a>
+			<a href="/rss.xml">RSS</a>
+		</div>
+		<div class="foot-col">
+			<p class="eyebrow">About</p>
+			<a href="/about/">소개</a>
+			<a href="https://github.com/xdswwwj" target="_blank" rel="noopener">GitHub</a>
 		</div>
 	</div>
+	<div class="wrap foot-bottom">© {year} {SITE_TITLE}</div>
 </footer>
 
 <style>
-	.site-footer {
-		flex-shrink: 0;
-		margin-top: var(--sp-16);
-		padding: var(--sp-8) 0 var(--sp-10);
-		border-top: 1px solid var(--line);
-	}
-	.footer-in {
-		display: flex;
-		flex-direction: column;
-		gap: var(--sp-3);
-	}
-	.f-name {
-		font-size: var(--fs-body);
-		font-weight: 700;
-		color: var(--ink);
-	}
-	.f-desc {
-		margin-top: 2px;
-		font-size: var(--fs-sub);
-		color: var(--soft);
-	}
-	nav {
-		display: flex;
-		gap: var(--sp-4);
-		font-size: var(--fs-sub);
-	}
-	nav a {
-		color: var(--soft);
-	}
-	nav a:hover {
-		color: var(--ink);
-	}
-	.f-copy {
-		margin-top: var(--sp-2);
-		font-size: var(--fs-sub);
-		color: var(--soft);
-	}
-	@media (min-width: 720px) {
-		.footer-in {
-			flex-direction: row;
-			justify-content: space-between;
-			align-items: flex-end;
-			gap: var(--sp-8);
-		}
-		.f-right {
-			display: flex;
-			flex-direction: column;
-			align-items: flex-end;
-			gap: var(--sp-2);
-			flex: none;
-		}
-		.f-copy {
-			margin-top: 0;
-		}
-	}
+	.site-footer { margin-top: 120px; background: var(--footer); padding: 64px 0 40px; }
+	.foot-in { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 40px; }
+	.logo { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.04em; color: var(--ink); }
+	.logo span { font-weight: 300; }
+	.desc { margin: 10px 0 0; max-width: 360px; font-size: 14px; color: var(--soft); }
+	.foot-col { display: flex; flex-direction: column; gap: 10px; }
+	.foot-col .eyebrow { margin: 0 0 6px; letter-spacing: 0.2em; }
+	.foot-col a { font-size: 14.5px; color: var(--ink-2); }
+	.foot-col a:hover { color: var(--ink); }
+	.foot-bottom { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--line); font-size: 13px; color: var(--faint); }
+	@media (max-width: 640px) { .foot-in { grid-template-columns: 1fr 1fr; } .foot-brand { grid-column: 1 / -1; } }
 </style>

@@ -1,110 +1,20 @@
 ---
-import { getSortedPosts } from '../../lib/posts';
+// 분류 첫 쪽 — 글 목록과 같은 화면(왼쪽 분류에서 고른다)
 import BaseHead from '../../components/BaseHead.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
+import PostIndex from '../../components/PostIndex.astro';
 import { SITE_TITLE } from '../../consts';
-
+import { getSortedPosts } from '../../lib/posts';
 const posts = await getSortedPosts();
-const counts = new Map<string, number>();
-for (const p of posts) counts.set(p.data.category, (counts.get(p.data.category) ?? 0) + 1);
-const categories = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-
-const tagCounts = new Map<string, number>();
-for (const p of posts) for (const t of p.data.tags ?? []) tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1);
-const tags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 ---
 
 <!doctype html>
 <html lang="ko">
-	<head>
-		<BaseHead title={`카테고리 · ${SITE_TITLE}`} description="카테고리별 글 모음" />
-	</head>
+	<head><BaseHead title={`분류 · ${SITE_TITLE}`} description="분류별 글 모음" /></head>
 	<body>
 		<Header />
-		<main class="wrap">
-			<header class="page-head">
-				<h1>카테고리</h1>
-				<p>주제별로 글을 모아 봐요.</p>
-			</header>
-			<ul class="cat-list">
-				{
-					categories.map(([name, count]) => (
-						<li>
-							<a href={`/categories/${encodeURIComponent(name)}/`}>
-								<span class="cn">{name}</span>
-								<span class="cc num">{count}개</span>
-								<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
-							</a>
-						</li>
-					))
-				}
-			</ul>
-
-			{
-				tags.length > 0 && (
-					<section aria-labelledby="tags-title">
-						<h2 class="sec-title" id="tags-title">
-							<a href="/tags/">태그</a>
-						</h2>
-						<ul class="chips tag-cloud">
-							{tags.map(([name, count]) => (
-								<li>
-									<a class="chip" href={`/tags/${encodeURIComponent(name)}/`}>
-										#{name} <small>{count}</small>
-									</a>
-								</li>
-							))}
-						</ul>
-					</section>
-				)
-			}
-		</main>
+		<main><PostIndex posts={posts} all={posts} /></main>
 		<Footer />
 	</body>
 </html>
-
-<style>
-	.cat-list {
-		margin: 0;
-		padding: 0;
-		list-style: none;
-		border-top: 1px solid var(--line);
-	}
-	.cat-list a {
-		display: flex;
-		align-items: center;
-		gap: var(--sp-3);
-		padding: var(--sp-4) 0;
-		border-bottom: 1px solid var(--line);
-		color: inherit;
-	}
-	.cn {
-		flex: 1;
-		min-width: 0;
-		font-size: var(--fs-title);
-		font-weight: 700;
-		color: var(--ink);
-		letter-spacing: -0.015em;
-	}
-	.cat-list a:hover .cn {
-		color: var(--accent);
-	}
-	.cc {
-		font-size: var(--fs-sub);
-		color: var(--soft);
-	}
-	.cat-list svg {
-		flex: none;
-		color: var(--faint);
-	}
-	.sec-title a {
-		color: inherit;
-	}
-	.sec-title a:hover {
-		color: var(--accent);
-	}
-	.tag-cloud {
-		margin-top: var(--sp-4);
-	}
-</style>

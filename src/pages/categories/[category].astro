@@ -1,116 +1,28 @@
 ---
-import { dateParts, formatKoreanDate, formatMonthDay, getSortedPosts, readingTime } from '../../lib/posts';
 import BaseHead from '../../components/BaseHead.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
+import PostIndex from '../../components/PostIndex.astro';
 import { SITE_TITLE } from '../../consts';
+import { getSortedPosts } from '../../lib/posts';
 
 export async function getStaticPaths() {
-	const posts = await getSortedPosts();
-	const categories = [...new Set(posts.map((p) => p.data.category))];
+	const all = await getSortedPosts();
+	const categories = [...new Set(all.map((p) => p.data.category))];
 	return categories.map((category) => ({
 		params: { category },
-		props: {
-			category,
-			posts: posts
-				.filter((p) => p.data.category === category),
-		},
+		props: { category, all, posts: all.filter((p) => p.data.category === category) },
 	}));
 }
-
-const { category, posts } = Astro.props;
-
-// 넓은 화면에선 왼쪽 날짜가 월·일만 보이므로, 연도별로 묶어 해를 구분한다 (posts 는 이미 최신순).
-const years: { year: number; posts: typeof posts }[] = [];
-for (const post of posts) {
-	const { year } = dateParts(post.data.pubDate);
-	const last = years.at(-1);
-	if (last && last.year === year) last.posts.push(post);
-	else years.push({ year, posts: [post] });
-}
+const { category, posts, all } = Astro.props;
 ---
 
 <!doctype html>
 <html lang="ko">
-	<head>
-		<BaseHead title={`${category} · ${SITE_TITLE}`} description={`${category} 카테고리의 글`} />
-	</head>
+	<head><BaseHead title={`${category} · ${SITE_TITLE}`} description={`${category} 분류의 글`} /></head>
 	<body>
 		<Header />
-		<main class="wrap">
-			<header class="page-head">
-				<a class="back" href="/categories/">
-					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6" /></svg>
-					카테고리
-				</a>
-				<h1>{category}</h1>
-				<p class="num">{posts.length}개의 글</p>
-			</header>
-			{
-				years.map(({ year, posts: yearPosts }) => (
-					<section class="year" aria-labelledby={`y-${year}`}>
-						<h2 id={`y-${year}`} class="year-t num">
-							<span>{year}년</span>
-							<small>{yearPosts.length}개</small>
-						</h2>
-						<ul class="post-rows">
-							{yearPosts.map((post) => {
-								const d = post.data.pubDate;
-								return (
-									<li class="post-row">
-										<a href={`/blog/${post.id}/`}>
-											<time class="d num" datetime={d.toISOString()}>
-												{formatMonthDay(d)}
-											</time>
-											<span class="t">{post.data.title}</span>
-											<span class="s">{post.data.description}</span>
-											<span class="m num">
-												<span class="pd">{formatKoreanDate(d)}</span>
-												<span class="dot" />
-												<span>{readingTime(post.body).replace('약 ', '')}</span>
-											</span>
-										</a>
-									</li>
-								);
-							})}
-						</ul>
-					</section>
-				))
-			}
-		</main>
+		<main><PostIndex posts={posts} all={all} active={category} /></main>
 		<Footer />
 	</body>
 </html>
-
-<style>
-	.back {
-		display: inline-flex;
-		align-items: center;
-		gap: 2px;
-		margin-bottom: var(--sp-4);
-		font-size: var(--fs-ui);
-		color: var(--soft);
-	}
-	.back:hover {
-		color: var(--ink);
-	}
-	.year + .year {
-		margin-top: var(--sp-10);
-	}
-	.year-t {
-		display: flex;
-		justify-content: space-between;
-		align-items: baseline;
-		padding-bottom: var(--sp-3);
-		border-bottom: 1px solid var(--line);
-		font-size: var(--fs-sub);
-		font-weight: 600;
-		color: var(--soft);
-		letter-spacing: 0;
-	}
-	.year-t small {
-		font-size: var(--fs-sub);
-		font-weight: 500;
-		color: var(--soft);
-	}
-</style>

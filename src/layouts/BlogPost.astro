@@ -1,15 +1,14 @@
 ---
-import { Image } from 'astro:assets';
+// 글 화면 — 참고: 풀링포레스트 글
+// 꽉 찬 표지(어두운 덮개) 위에 분류 배지 · 가는 큰 제목 · 요약 · 가는 줄 · 글쓴이, 아래는 가운데 한 줄 본문
 import type { CollectionEntry } from 'astro:content';
 import BaseHead from '../components/BaseHead.astro';
+import Cover from '../components/Cover.astro';
 import Footer from '../components/Footer.astro';
-import FormattedDate from '../components/FormattedDate.astro';
 import Header from '../components/Header.astro';
-import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
-import { formatDotDate } from '../lib/posts';
+import { formatDotDate, getSortedPosts } from '../lib/posts';
 
 type Heading = { depth: number; slug: string; text: string };
-
 type Props = Omit<CollectionEntry<'blog'>['data'], 'draft' | 'tags'> & {
 	draft?: boolean;
 	tags?: string[];
@@ -21,998 +20,195 @@ type Props = Omit<CollectionEntry<'blog'>['data'], 'draft' | 'tags'> & {
 	related?: CollectionEntry<'blog'>[];
 };
 
-const {
-	title,
-	description,
-	pubDate,
-	updatedDate,
-	heroImage,
-	category,
-	tags = [],
-	readingTime,
-	headings = [],
-	ogImage,
-	newer,
-	older,
-	related = [],
-} = Astro.props;
-
+const { title, description, pubDate, updatedDate, heroImage, category, tags = [], readingTime, headings = [], ogImage, newer, older, related = [] } = Astro.props;
 const isArticle = readingTime !== undefined;
-const toc = isArticle ? headings.filter((h) => h.depth === 2 || h.depth === 3) : [];
-const hasToc = toc.length > 1;
-const categoryHref = `/categories/${encodeURIComponent(category)}/`;
+const catHref = `/categories/${encodeURIComponent(category)}/`;
+const seed = Astro.url.pathname;
+// 왼쪽 메뉴 — 목록과 같은 분류 + 이 글의 차례
+const all = await getSortedPosts();
+const counts = new Map<string, number>();
+for (const p of all) counts.set(p.data.category, (counts.get(p.data.category) ?? 0) + 1);
+const cats = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+const toc = headings.filter((h) => h.depth === 2);
 ---
 
 <html lang="ko">
 	<head>
-		<BaseHead
-			title={title}
-			description={description}
-			image={heroImage}
-			ogImage={ogImage}
-			type={isArticle ? 'article' : 'website'}
-			pubDate={pubDate}
-			updatedDate={updatedDate}
-			category={category}
-		/>
+		<BaseHead title={title} description={description} image={heroImage} ogImage={ogImage}
+			type={isArticle ? 'article' : 'website'} pubDate={pubDate} updatedDate={updatedDate} category={category} />
 	</head>
-
 	<body>
 		<Header />
-		<main class="wrap">
-			<header class="p-head">
-				{
-					isArticle && (
-						<a class="p-back" href="/blog">
-							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6" /></svg>
-							글 목록
-						</a>
-					)
-				}
-				<h1 class="p-title">{title}</h1>
-				{description && <p class="p-desc">{description}</p>}
-				{
-					isArticle && (
-						<div class="p-meta num">
-							<FormattedDate date={pubDate} />
-							<span class="dot" />
-							<a href={categoryHref}>{category}</a>
-							<span class="dot" />
-							<span>{readingTime}분 읽기</span>
-							{updatedDate && (
-								<>
-									<span class="dot" />
-									<span>
-										수정 <FormattedDate date={updatedDate} />
-									</span>
-								</>
-							)}
+		<main>
+			<section class:list={['post-hero', { plain: !isArticle }]}>
+				{isArticle && <Cover image={heroImage} seed={seed} class="post-hero-bg" eager />}
+				{isArticle && <div class="post-hero-shade" />}
+				<div class="wrap post-grid post-hero-in"><div aria-hidden="true" /><div>
+					{isArticle && <a class="badge" href={catHref}>{category}</a>}
+					<h1>{title}</h1>
+					<p class="post-lead">{description}</p>
+					{isArticle && (
+						<div class="byline">
+							<p class="who">김도현</p>
+							<p class="role">풀스택 개발자 · {formatDotDate(pubDate)}{readingTime ? ` · ${readingTime}분 읽기` : ''}</p>
 						</div>
-					)
-				}
-			</header>
-			{
-				heroImage ? (
-					<figure class="p-hero">
-						<Image
-							src={heroImage}
-							alt=""
-							widths={[680, 1360]}
-							sizes="(min-width: 720px) 680px, 100vw"
-							loading="eager"
-							fetchpriority="high"
-						/>
-					</figure>
-				) : (
-					<hr class="p-rule" />
-				)
-			}
+					)}
+				</div></div>
+			</section>
 
-			<div class="p-body">
-				{
-					hasToc && (
-						<aside class="toc-rail">
-							<nav class="toc" aria-label="목차">
-								<p>목차</p>
-								<ol>
-									{toc.map((h) => (
-										<li class={h.depth === 3 ? 'sub' : undefined}>
-											<a href={`#${h.slug}`} data-slug={h.slug}>{h.text}</a>
-										</li>
-									))}
-								</ol>
-							</nav>
-						</aside>
-					)
-				}
-				{
-					hasToc && (
-						<details class="toc-m">
-							<summary>
-								목차
-								<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-							</summary>
-							<ol>
-								{toc.map((h) => (
-									<li class={h.depth === 3 ? 'sub' : undefined}>
-										<a href={`#${h.slug}`}>{h.text}</a>
-									</li>
-								))}
-							</ol>
-						</details>
-					)
-				}
+			<div class="wrap post-grid">
+				<aside class="side-menu" aria-label="메뉴">
+					<div class="side-sticky">
+						<p class="eyebrow">Categories</p>
+						<ul>
+							<li><a href="/blog/"><span>All</span><span class="n">{all.length}</span></a></li>
+							{cats.map(([c, n]) => (
+								<li><a href={`/categories/${encodeURIComponent(c)}/`} class:list={[{ on: isArticle && c === category }]}><span>{c}</span><span class="n">{n}</span></a></li>
+							))}
+						</ul>
+						{toc.length > 1 && (
+							<>
+								<p class="eyebrow toc-head">On this page</p>
+								<ul class="toc">{toc.map((h) => <li><a href={`#${h.slug}`}>{h.text}</a></li>)}</ul>
+							</>
+						)}
+					</div>
+				</aside>
 				<article class="prose">
 					<slot />
 				</article>
 			</div>
 
-			{
-				isArticle && tags.length > 0 && (
-					<ul class="chips p-tags" aria-label="태그">
-						{tags.map((t) => (
-							<li>
-								<a class="chip" href={`/tags/${encodeURIComponent(t)}/`}>#{t}</a>
-							</li>
+			{isArticle && tags.length > 0 && (
+				<div class="wrap post-grid"><div /><div class="post-tags">
+					{tags.map((t) => <a href={`/tags/${encodeURIComponent(t)}/`}>#{t}</a>)}
+				</div></div>
+			)}
+
+			{isArticle && (newer || older) && (
+				<div class="wrap post-grid"><div /><nav class="post-nav" aria-label="이전·다음 글">
+					{older ? <a href={`/blog/${older.id}/`}><span class="lbl">← 이전 글</span><span class="t">{older.data.title}</span></a> : <span />}
+					{newer ? <a class="next" href={`/blog/${newer.id}/`}><span class="lbl">다음 글 →</span><span class="t">{newer.data.title}</span></a> : <span />}
+				</nav></div>
+			)}
+
+			{isArticle && related.length > 0 && (
+				<section class="wrap related">
+					<p class="eyebrow">Related</p>
+					<div class="related-grid">
+						{related.map((p) => (
+							<a class="rel" href={`/blog/${p.id}/`}>
+								<Cover image={p.data.heroImage} seed={`/blog/${p.id}/`} class="rel-thumb" sizes="(min-width: 960px) 380px, 100vw">
+									<span class="badge-on">{p.data.category}</span>
+								</Cover>
+								<h3>{p.data.title}</h3>
+							</a>
 						))}
-					</ul>
-				)
-			}
-
-			{
-				isArticle && (
-					<section class="author" aria-label="글쓴이">
-						<div class="av" aria-hidden="true">
-							<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" /></svg>
-						</div>
-						<div class="author-body">
-							<div class="nm">{SITE_TITLE}</div>
-							<p class="bio">{SITE_DESCRIPTION}</p>
-							<div class="lk">
-								<a href="/about">소개 보기</a>
-								<a href="https://github.com/xdswwwj" target="_blank" rel="noopener">GitHub</a>
-								<a href="/rss.xml">RSS</a>
-							</div>
-						</div>
-					</section>
-				)
-			}
-
-			{
-				isArticle && (older || newer) && (
-					<nav class="pn" aria-label="이전·다음 글">
-						{older && (
-							<a href={`/blog/${older.id}/`}>
-								<span class="lb">← 이전 글</span>
-								<span class="tt">{older.data.title}</span>
-							</a>
-						)}
-						{newer && (
-							<a class:list={['next', { solo: !older }]} href={`/blog/${newer.id}/`}>
-								<span class="lb">다음 글 →</span>
-								<span class="tt">{newer.data.title}</span>
-							</a>
-						)}
-					</nav>
-				)
-			}
-
-			{
-				isArticle && related.length > 0 && (
-					<section aria-labelledby="related-title">
-						<h2 class="sec-title" id="related-title">관련 글</h2>
-						<ul class="rows">
-							{related.map((r) => (
-								<li>
-									<a href={`/blog/${r.id}/`}>
-										<span class="rt">{r.data.title}</span>
-										<span class="rd">{formatDotDate(r.data.pubDate)}</span>
-									</a>
-								</li>
-							))}
-						</ul>
-					</section>
-				)
-			}
+					</div>
+				</section>
+			)}
 		</main>
 		<Footer />
 
-		<script is:inline>
-			(() => {
-				// 코드 블록: 언어 이름 + 복사 버튼
-				document.querySelectorAll('.prose pre.astro-code').forEach((pre) => {
-					const wrap = document.createElement('div');
-					wrap.className = 'code-block';
-					const bar = document.createElement('div');
-					bar.className = 'code-toolbar';
-					const label = document.createElement('span');
-					label.className = 'code-lang';
-					label.textContent = pre.getAttribute('data-language') || 'code';
-					const btn = document.createElement('button');
-					btn.type = 'button';
-					btn.className = 'code-copy';
-					btn.textContent = '복사';
-					btn.addEventListener('click', async () => {
-						const code = pre.querySelector('code')?.innerText ?? pre.innerText;
-						try {
-							await navigator.clipboard.writeText(code);
-							btn.classList.add('copied');
-							btn.textContent = '복사했어요';
-							setTimeout(() => {
-								btn.classList.remove('copied');
-								btn.textContent = '복사';
-							}, 1600);
-						} catch (e) {}
-					});
-					bar.append(label, btn);
-					pre.parentNode.insertBefore(wrap, pre);
-					wrap.append(bar, pre);
-				});
-
-				// 표: 테두리 상자 안에서만 가로로 넘기기
-				document.querySelectorAll('.prose table').forEach((table) => {
-					if (table.parentElement.classList.contains('table-wrap')) return;
-					const wrap = document.createElement('div');
-					wrap.className = 'table-wrap';
-					table.parentNode.insertBefore(wrap, table);
-					wrap.appendChild(table);
-				});
-
-				// 소제목 링크
-				document.querySelectorAll('.prose h2[id], .prose h3[id], .prose h4[id]').forEach((h) => {
-					const a = document.createElement('a');
-					a.className = 'heading-anchor';
-					a.href = '#' + h.id;
-					a.setAttribute('aria-label', '이 섹션으로 가는 링크');
-					a.textContent = '#';
-					h.appendChild(a);
-				});
-
-				// GitHub 식 callout: > [!NOTE] / [!TIP] / [!IMPORTANT] / [!WARNING] / [!CAUTION]
-				const svg = (d) =>
-					'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
-				const calloutMeta = {
-					note: { label: '참고', icon: svg('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>') },
-					tip: { label: '팁', icon: svg('<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3Z"/>') },
-					important: { label: '중요', icon: svg('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>') },
-					warning: { label: '주의', icon: svg('<path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4M12 17h.01"/>') },
-					caution: { label: '경고', icon: svg('<circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/>') },
-				};
-				const calloutRe = /^\s*\[!(note|tip|important|warning|caution)\]\s*(<br\s*\/?>)?\s*/i;
-				document.querySelectorAll('.prose blockquote').forEach((bq) => {
-					const firstP = bq.querySelector('p');
-					if (!firstP) return;
-					const m = firstP.textContent.match(/^\s*\[!(note|tip|important|warning|caution)\]/i);
-					if (!m) return;
-					const type = m[1].toLowerCase();
-					firstP.innerHTML = firstP.innerHTML.replace(calloutRe, '');
-					if (!firstP.textContent.trim() && !firstP.querySelector('img, code')) firstP.remove();
-					bq.classList.add('callout', 'callout-' + type);
-					const head = document.createElement('div');
-					head.className = 'callout-head';
-					head.innerHTML = calloutMeta[type].icon + '<span>' + calloutMeta[type].label + '</span>';
-					bq.insertBefore(head, bq.firstChild);
-				});
-
-				// 폰 목차: 항목을 누르면 접기
-				const tocM = document.querySelector('.toc-m');
-				if (tocM) {
-					tocM.addEventListener('click', (e) => {
-						if (e.target.closest('a')) tocM.open = false;
-					});
-				}
-
-				// 넓은 화면 목차: 지금 읽는 소제목 표시
-				const tocLinks = [...document.querySelectorAll('.toc a[data-slug]')];
-				if (tocLinks.length) {
-					const targets = tocLinks.map((a) => document.getElementById(a.dataset.slug)).filter(Boolean);
-					if (!targets.length) return;
-					let current = null;
-					const setActive = (id) => {
-						if (id === current) return;
-						current = id;
-						tocLinks.forEach((a) => {
-							const on = a.dataset.slug === id;
-							a.classList.toggle('on', on);
-							if (on) a.setAttribute('aria-current', 'true');
-							else a.removeAttribute('aria-current');
-						});
-					};
-					// 짧은 글은 마지막 소제목까지 스크롤이 닿지 않으니, 지점을 비율로 줄여서
-					// 모든 소제목이 차례대로 켜지게 해요.
-					const doc = document.documentElement;
-					let points = [];
-					const recalc = () => {
-						const max = Math.max(1, doc.scrollHeight - window.innerHeight);
-						const line = Math.min(window.innerHeight * 0.3, 140);
-						let pts = targets.map((t) => Math.max(0, t.getBoundingClientRect().top + window.scrollY - line));
-						const last = pts[pts.length - 1];
-						if (last > max) pts = pts.map((p) => (p * max) / last);
-						points = pts;
-					};
-					const spy = () => {
-						const y = window.scrollY;
-						let idx = 0;
-						for (let i = 0; i < points.length; i++) {
-							if (y >= points[i] - 1) idx = i;
-							else break;
-						}
-						setActive(targets[idx].id);
-					};
-					const refresh = () => {
-						recalc();
-						spy();
-					};
-					recalc();
-					window.addEventListener('scroll', spy, { passive: true });
-					window.addEventListener('resize', refresh);
-					// mermaid 그림 · 이미지 · 글꼴이 늦게 자리를 잡으면 다시 계산
-					window.addEventListener('load', refresh);
-					if ('ResizeObserver' in window) new ResizeObserver(refresh).observe(document.body);
-					spy();
-				}
-			})();
-		</script>
 		<script>
 			import mermaid from 'mermaid';
-
 			const nodes = [...document.querySelectorAll<HTMLElement>('.prose pre.mermaid')];
 			if (nodes.length) {
-				nodes.forEach((n) => (n.dataset.src = n.textContent ?? ''));
-				const palette = (dark: boolean) => {
-					const c = dark
-						? { bg: '#17171C', sub: '#1D1D23', fill: '#2A2A32', line: '#2C2C35', strong: '#44444F', ink: '#F2F3F5', ink2: '#CDD1D6', soft: '#9EA5AF', accent: '#4C97FF', accentSoft: '#1C2A40' }
-						: { bg: '#FFFFFF', sub: '#F9FAFB', fill: '#F2F4F6', line: '#E5E8EB', strong: '#D1D6DB', ink: '#191F28', ink2: '#333D4B', soft: '#6B7684', accent: '#3182F6', accentSoft: '#E8F3FF' };
-					return {
-						darkMode: dark,
-						fontFamily: getComputedStyle(document.body).fontFamily,
-						fontSize: '14px',
-						background: c.bg,
-						primaryColor: c.sub,
-						primaryBorderColor: c.strong,
-						primaryTextColor: c.ink,
-						secondaryColor: c.accentSoft,
-						tertiaryColor: c.fill,
-						mainBkg: c.sub,
-						nodeBorder: c.strong,
-						textColor: c.ink2,
-						lineColor: c.soft,
-						clusterBkg: c.sub,
-						clusterBorder: c.line,
-						edgeLabelBackground: c.bg,
-						actorBkg: c.sub,
-						actorBorder: c.strong,
-						actorTextColor: c.ink,
-						actorLineColor: c.strong,
-						signalColor: c.soft,
-						signalTextColor: c.ink2,
-						labelBoxBkgColor: c.fill,
-						labelBoxBorderColor: c.strong,
-						labelTextColor: c.ink,
-						loopTextColor: c.ink2,
-						noteBkgColor: c.accentSoft,
-						noteBorderColor: c.accent,
-						noteTextColor: c.ink,
-						activationBkgColor: c.fill,
-						activationBorderColor: c.strong,
-					};
-				};
-				let shown: boolean | undefined;
-				const render = async () => {
-					const dark = document.documentElement.dataset.theme === 'dark';
-					if (dark === shown) return;
-					shown = dark;
-					mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: palette(dark) });
-					nodes.forEach((n) => {
-						n.removeAttribute('data-processed');
-						n.textContent = n.dataset.src ?? '';
-					});
-					await mermaid.run({ nodes });
-				};
-				render();
-				// 테마를 바꾸면 그림도 같은 색으로 다시 그려요
-				new MutationObserver(render).observe(document.documentElement, {
-					attributes: true,
-					attributeFilter: ['data-theme'],
+				mermaid.initialize({
+					startOnLoad: false, theme: 'base',
+					themeVariables: {
+						darkMode: true, fontFamily: getComputedStyle(document.body).fontFamily, fontSize: '14px',
+						background: '#0a0a0b', primaryColor: '#141416', primaryBorderColor: '#3f3f46', primaryTextColor: '#fafafa',
+						secondaryColor: '#18181b', tertiaryColor: '#27272a', mainBkg: '#141416', nodeBorder: '#3f3f46',
+						textColor: '#d4d4d8', lineColor: '#71717a', clusterBkg: '#0a0a0b', clusterBorder: '#27272a', edgeLabelBackground: '#0a0a0b',
+						actorBkg: '#141416', actorBorder: '#3f3f46', actorTextColor: '#fafafa', signalColor: '#a1a1aa', signalTextColor: '#d4d4d8',
+						noteBkgColor: '#18181b', noteBorderColor: '#52525b', noteTextColor: '#fafafa',
+					},
 				});
+				mermaid.run({ nodes });
 			}
 		</script>
 	</body>
 </html>
 
 <style>
-	/* ── 글 머리 ── */
-	.p-head {
-		padding: var(--sp-8) 0 0;
-	}
-	.p-back {
-		display: inline-flex;
-		align-items: center;
-		gap: 2px;
-		margin-bottom: var(--sp-6);
-		font-size: var(--fs-ui);
-		color: var(--soft);
-	}
-	.p-back:hover {
-		color: var(--ink);
-	}
-	.p-title {
-		font-size: var(--fs-display);
-		line-height: var(--lh-tight);
-		letter-spacing: var(--ls-title);
-	}
-	.p-desc {
-		margin-top: var(--sp-3);
-		font-size: var(--fs-prose);
-		color: var(--soft);
-		line-height: var(--lh-body);
-	}
-	.p-meta {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 6px;
-		margin-top: var(--sp-5);
-		font-size: var(--fs-ui);
-		color: var(--soft);
-	}
-	.p-meta a {
-		color: var(--ink-2);
-		font-weight: 600;
-	}
-	.p-meta a:hover {
-		color: var(--accent);
-	}
-	.p-rule {
-		margin: var(--sp-8) 0;
-	}
-	/* 대표 이미지: 본문 폭에 맞춰, 둥근 모서리와 옅은 테두리만 */
-	.p-hero {
-		margin: var(--sp-8) 0;
-		overflow: hidden;
-		border: 1px solid var(--line);
-		border-radius: var(--r-card);
-		background: var(--fill);
-	}
-	.p-hero img {
-		display: block;
-		width: 100%;
-		height: auto;
-	}
-	.p-body {
-		position: relative;
-	}
+	/* 왼쪽 메뉴 220 + 본문 (목록 화면과 같은 줄) */
+	.post-grid { display: grid; grid-template-columns: 220px minmax(0, 760px); gap: 64px; }
+	.side-menu { padding-top: 72px; }
+	.side-sticky { position: sticky; top: 96px; }
+	.side-menu ul { list-style: none; margin: 14px 0 0; padding: 0; }
+	.side-menu a { display: flex; justify-content: space-between; gap: 8px; padding: 9px 14px; border-left: 2px solid transparent; font-size: 14px; color: var(--ink-2); }
+	.side-menu a:hover { color: var(--ink); }
+	.side-menu a.on { border-left-color: var(--ink); background: var(--panel); color: var(--ink); }
+	.side-menu .n { font-size: 12.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
+	.toc-head { margin-top: 36px; }
+	.toc a { display: block; padding: 6px 14px; font-size: 13.5px; line-height: 1.5; color: var(--soft); }
 
-	/* ── 목차: 폰·중간 폭은 접는 상자, 넓은 화면은 오른쪽 여백 ── */
-	.toc-rail {
-		display: none;
-	}
-	.toc-m {
-		margin-bottom: var(--sp-8);
-		background: var(--bg-sub);
-		border: 1px solid var(--line);
-		border-radius: var(--r-card);
-		font-size: var(--fs-ui);
-	}
-	.toc-m summary {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: var(--sp-3) var(--sp-4);
-		list-style: none;
-		font-weight: 600;
-		color: var(--ink);
-		cursor: pointer;
-	}
-	.toc-m summary::-webkit-details-marker {
-		display: none;
-	}
-	.toc-m summary svg {
-		color: var(--soft);
-		transition: transform 0.15s ease;
-	}
-	.toc-m[open] summary svg {
-		transform: rotate(180deg);
-	}
-	.toc-m ol,
-	.toc ol {
-		margin: 0;
-		padding: 0 var(--sp-4) var(--sp-3);
-		list-style: none;
-	}
-	.toc-m li a,
-	.toc li a {
-		display: block;
-		padding: 5px 0;
-		color: var(--soft);
-		line-height: 1.5;
-	}
-	.toc-m li a:hover,
-	.toc li a:hover {
-		color: var(--ink);
-	}
-	.toc-m li.sub a,
-	.toc li.sub a {
-		padding-left: var(--sp-3);
-	}
-	/* 1200px: 680 본문 + 200 목차 + 사이 48 이 스크롤바가 있어도 화면 안에 들어가는 폭 */
-	@media (min-width: 1200px) {
-		.toc-m {
-			display: none;
-		}
-		.toc-rail {
-			display: block;
-			position: absolute;
-			top: 0;
-			bottom: 0;
-			left: calc(100% + 48px);
-			width: var(--w-toc);
-		}
-		.toc {
-			position: sticky;
-			top: var(--sp-10);
-			max-height: calc(100vh - var(--sp-16));
-			overflow-y: auto;
-			font-size: var(--fs-sub);
-			border-left: 1px solid var(--line);
-		}
-		.toc p {
-			margin: 0 0 var(--sp-2);
-			padding-left: var(--sp-4);
-			font-weight: 700;
-			color: var(--ink);
-		}
-		.toc ol {
-			padding: 0 0 0 var(--sp-4);
-		}
-		.toc li a {
-			position: relative;
-		}
-		.toc li a.on {
-			color: var(--accent);
-			font-weight: 600;
-		}
-		.toc li a.on::before {
-			content: '';
-			position: absolute;
-			left: -17px;
-			top: 6px;
-			bottom: 6px;
-			width: 2px;
-			background: var(--accent);
-		}
-		.toc li.sub a.on::before {
-			left: -29px;
-		}
-	}
+	.post-hero { position: relative; display: flex; align-items: flex-end; min-height: 560px; border-bottom: 1px solid var(--line-soft); }
+	.post-hero.plain { min-height: 0; }
+	.post-hero :global(.post-hero-bg) { position: absolute; inset: 0; }
+	.post-hero-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0.92) 100%); }
+	.post-hero-in { position: relative; padding-top: 140px; padding-bottom: 56px; }
+	.plain .post-hero-in { padding-top: 88px; padding-bottom: 40px; }
+	.post-hero h1 { margin: 20px 0 0; font-size: clamp(32px, 4.6vw, 52px); line-height: 1.24; font-weight: 300; letter-spacing: -0.025em; color: var(--ink); }
+	.plain h1 { margin-top: 0; }
+	.post-lead { margin: 22px 0 0; max-width: 680px; font-size: 17px; line-height: 1.75; color: var(--ink-2); opacity: 0.85; }
+	.byline { margin-top: 36px; padding-top: 22px; border-top: 1px solid var(--line-soft); }
+	.who { margin: 0; font-size: 14.5px; font-weight: 600; color: var(--ink); }
+	.role { margin: 2px 0 0; font-size: 13.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
 
-	/* ── 글 끝 ── */
-	.p-tags {
-		margin-top: var(--sp-10);
-	}
-	.author {
-		display: flex;
-		gap: var(--sp-4);
-		margin-top: var(--sp-10);
-		padding: var(--sp-6);
-		border: 1px solid var(--line);
-		border-radius: var(--r-card);
-	}
-	.author-body {
-		min-width: 0;
-	}
-	.av {
-		display: grid;
-		place-items: center;
-		flex: none;
-		width: 52px;
-		height: 52px;
-		border-radius: 50%;
-		background: var(--fill);
-		color: var(--faint);
-	}
-	.nm {
-		font-size: var(--fs-body);
-		font-weight: 700;
-		color: var(--ink);
-	}
-	.bio {
-		margin-top: 4px;
-		font-size: var(--fs-ui);
-		color: var(--soft);
-		line-height: var(--lh-body);
-	}
-	.lk {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--sp-2);
-		margin-top: var(--sp-3);
-	}
-	.lk a {
-		display: inline-flex;
-		align-items: center;
-		height: 32px;
-		padding: 0 var(--sp-3);
-		border-radius: var(--r-btn);
-		background: var(--fill);
-		font-size: var(--fs-sub);
-		font-weight: 600;
-		color: var(--ink-2);
-		transition: background-color 0.15s ease;
-	}
-	.lk a:hover {
-		background: var(--fill-strong);
-		color: var(--ink-2);
-	}
-	.pn {
-		display: grid;
-		grid-template-columns: 1fr;
-		gap: var(--sp-2);
-		margin-top: var(--sp-6);
-	}
-	.pn a {
-		display: flex;
-		flex-direction: column;
-		padding: var(--sp-4) var(--sp-5);
-		border: 1px solid var(--line);
-		border-radius: var(--r-card);
-		color: inherit;
-		transition: background-color 0.15s ease;
-	}
-	.pn a:hover {
-		background: var(--bg-sub);
-	}
-	.pn .lb {
-		font-size: var(--fs-sub);
-		color: var(--soft);
-	}
-	.pn .tt {
-		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
-		margin-top: 4px;
-		font-size: var(--fs-body);
-		font-weight: 600;
-		color: var(--ink);
-		line-height: 1.5;
-	}
-	.pn .next {
-		text-align: right;
-	}
+	/* 본문 */
+	.prose { padding-top: 72px; font-size: 16.5px; line-height: 1.95; color: var(--ink-2); }
+	.prose :global(p) { margin: 0 0 26px; }
+	.prose :global(h2) { margin: 72px 0 20px; font-size: 28px; line-height: 1.4; font-weight: 400; letter-spacing: -0.015em; color: var(--ink); }
+	.prose :global(h3) { margin: 48px 0 14px; font-size: 21px; line-height: 1.45; font-weight: 500; color: var(--ink); }
+	.prose :global(strong) { color: var(--ink); font-weight: 600; }
+	.prose :global(a) { color: var(--ink); text-decoration: underline; text-underline-offset: 4px; text-decoration-color: rgba(255,255,255,0.4); }
+	.prose :global(img) { width: 100%; margin: 40px 0; }
+	.prose :global(blockquote) { margin: 40px 0; padding: 2px 0 2px 22px; border-left: 1px solid #71717a; font-style: italic; color: var(--soft); }
+	.prose :global(blockquote p) { margin: 0; }
+	.prose :global(ul), .prose :global(ol) { margin: 0 0 26px; padding-left: 22px; }
+	.prose :global(li) { margin: 6px 0; }
+	.prose :global(hr) { margin: 56px 0; border: 0; border-top: 1px solid var(--line); }
+	.prose :global(code) { font-family: var(--font-mono); font-size: 0.88em; padding: 2px 6px; background: var(--panel); border-radius: 4px; color: var(--ink); }
+	.prose :global(pre) { margin: 32px 0; padding: 20px 22px; overflow-x: auto; background: var(--bg-2) !important; border: 1px solid var(--line); border-radius: 6px; font-size: 14px; line-height: 1.7; }
+	.prose :global(pre code) { padding: 0; background: none; }
+	.prose :global(pre.mermaid) { display: flex; justify-content: center; text-align: center; font-family: var(--font); }
+	.prose :global(pre.mermaid:not([data-processed])) { color: transparent; }
+	.prose :global(table) { width: 100%; margin: 32px 0; border-collapse: collapse; font-size: 15px; }
+	.prose :global(th), .prose :global(td) { padding: 12px 14px; border-bottom: 1px solid var(--line); text-align: left; }
+	.prose :global(th) { color: var(--ink); font-weight: 600; }
 
-	@media (min-width: 720px) {
-		.p-head {
-			padding-top: var(--sp-12);
-		}
-		.p-title {
-			line-height: 1.3;
-		}
-		.p-desc {
-			font-size: 18px;
-		}
-		.p-rule,
-		.p-hero {
-			margin: var(--sp-10) 0 var(--sp-12);
-		}
-		.pn {
-			grid-template-columns: 1fr 1fr;
-		}
-		.pn .next.solo {
-			grid-column: 2;
-		}
-	}
-</style>
+	.post-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+	.post-tags a { padding: 4px 12px; border: 1px solid var(--line); font-size: 13px; color: var(--soft); }
+	.post-tags a:hover { color: var(--ink); border-color: var(--faint); }
 
-<style is:global>
-	/* ── 본문 (마크다운) ── */
-	.prose {
-		font-size: var(--fs-prose);
-		line-height: var(--lh-prose);
-		letter-spacing: var(--ls-prose);
-		color: var(--ink-2);
-	}
-	.prose > :first-child {
-		margin-top: 0;
-	}
-	.prose p {
-		margin: 0 0 1.5em;
-	}
-	.prose h2,
-	.prose h3,
-	.prose h4 {
-		scroll-margin-top: var(--sp-6);
-		color: var(--ink);
-	}
-	.prose h2 {
-		margin: var(--sp-14) 0 var(--sp-4);
-		font-size: var(--fs-h2);
-		line-height: 1.4;
-		letter-spacing: -0.02em;
-	}
-	.prose h3 {
-		margin: var(--sp-10) 0 var(--sp-3);
-		font-size: var(--fs-h3);
-		line-height: 1.45;
-		letter-spacing: -0.015em;
-	}
-	.prose h4 {
-		margin: var(--sp-8) 0 var(--sp-2);
-		font-size: 16px;
-		line-height: 1.5;
-	}
-	.prose a {
-		color: var(--accent);
-		text-decoration: underline;
-		text-decoration-color: color-mix(in srgb, var(--accent) 35%, transparent);
-		text-decoration-thickness: 1px;
-		text-underline-offset: 3px;
-	}
-	.prose a:hover {
-		text-decoration-color: var(--accent);
-	}
-	.prose strong {
-		color: var(--ink);
-	}
-	.prose ul,
-	.prose ol {
-		margin: 0 0 1.5em;
-		padding-left: 1.3em;
-	}
-	.prose li {
-		margin: 0.35em 0;
-	}
-	.prose li::marker {
-		color: var(--faint);
-	}
-	.prose li > ul,
-	.prose li > ol {
-		margin: 0.35em 0;
-	}
+	.post-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 64px; padding-top: 32px; border-top: 1px solid var(--line); }
+	.post-nav a { display: flex; flex-direction: column; gap: 8px; }
+	.post-nav .next { text-align: right; }
+	.post-nav .lbl { font-size: 13px; color: var(--faint); }
+	.post-nav .t { font-size: 16px; font-weight: 500; color: var(--ink); line-height: 1.45; }
+	.post-nav a:hover .t { text-decoration: underline; text-underline-offset: 4px; }
 
-	/* 인용 */
-	.prose blockquote {
-		margin: var(--sp-8) 0;
-		padding: 2px 0 2px var(--sp-5);
-		border-left: 3px solid var(--line-strong);
-		color: var(--ink);
-		font-size: 1.04em;
-	}
-	.prose blockquote p {
-		margin: 0 0 0.75em;
-	}
-	.prose blockquote > :last-child {
-		margin-bottom: 0;
-	}
+	.related { margin-top: 96px; }
+	.related-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; margin-top: 18px; }
+	.rel :global(.rel-thumb) { aspect-ratio: 16 / 10; }
+	.rel h3 { margin: 14px 0 0; font-size: 18px; line-height: 1.45; font-weight: 500; color: var(--ink); }
+	.rel:hover h3 { text-decoration: underline; text-underline-offset: 4px; }
 
-	/* callout */
-	.prose blockquote.callout {
-		--c: var(--accent);
-		padding: var(--sp-4) var(--sp-5);
-		border-left: 0;
-		border-radius: var(--r-card);
-		background: var(--accent-soft);
-		font-size: var(--fs-body);
-		line-height: 1.7;
-		color: var(--ink-2);
+	@media (max-width: 960px) {
+		.post-grid { grid-template-columns: minmax(0, 1fr); gap: 0; }
+		.post-grid > :first-child:is(div[aria-hidden], div:empty) { display: none; }
+		.side-menu { display: none; }
 	}
-	.prose .callout + .callout {
-		margin-top: calc(var(--sp-3) - var(--sp-8));
-	}
-	.prose blockquote.callout-tip {
-		--c: var(--ink);
-		background: var(--fill);
-	}
-	.prose blockquote.callout-warning,
-	.prose blockquote.callout-caution {
-		--c: var(--danger);
-		background: var(--danger-soft);
-	}
-	.prose .callout-head {
-		display: flex;
-		align-items: center;
-		gap: var(--sp-2);
-		margin-bottom: 2px;
-		font-size: var(--fs-ui);
-		font-weight: 700;
-		color: var(--c);
-	}
-	.prose .callout-head svg {
-		flex: none;
-		width: 18px;
-		height: 18px;
-	}
-
-	/* 인라인 코드 */
-	.prose :not(pre) > code {
-		padding: 0.15em 0.4em;
-		border-radius: var(--r-badge);
-		background: var(--fill);
-		color: var(--ink);
-		font-size: 0.86em;
-	}
-
-	/* 코드 블록 */
-	.prose pre {
-		margin: var(--sp-8) 0;
-		padding: var(--sp-4);
-		overflow-x: auto;
-		border: 1px solid var(--line);
-		border-radius: var(--r-card);
-		font-size: 13px;
-		line-height: 1.7;
-		letter-spacing: 0;
-		tab-size: 2;
-		word-break: normal;
-		overflow-wrap: normal;
-	}
-	.prose pre > code {
-		font-size: inherit;
-	}
-	.prose .code-block {
-		margin: var(--sp-8) 0;
-		border: 1px solid var(--line);
-		border-radius: var(--r-card);
-		background: var(--bg-sub);
-		overflow: hidden;
-	}
-	.prose .code-block pre {
-		margin: 0;
-		border: 0;
-		border-radius: 0;
-	}
-	.prose .code-toolbar {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		height: 40px;
-		padding: 0 var(--sp-2) 0 var(--sp-4);
-		border-bottom: 1px solid var(--line);
-	}
-	.prose .code-lang {
-		font-family: var(--font-mono);
-		font-size: 12.5px;
-		color: var(--soft);
-	}
-	.prose .code-copy {
-		height: 28px;
-		padding: 0 10px;
-		border: 0;
-		border-radius: var(--r-badge);
-		background: var(--fill);
-		color: var(--ink-2);
-		font-size: 12px;
-		font-weight: 600;
-		cursor: pointer;
-		transition: background-color 0.15s ease;
-	}
-	.prose .code-copy:hover {
-		background: var(--fill-strong);
-	}
-	.prose .code-copy.copied {
-		background: var(--accent-soft);
-		color: var(--accent);
-	}
-
-	/* mermaid 그림: 테두리 상자 안에, 넓으면 상자 안에서만 가로로 */
-	.prose pre.mermaid {
-		display: flex;
-		justify-content: center;
-		margin: var(--sp-8) 0;
-		padding: var(--sp-6) var(--sp-4);
-		overflow-x: auto;
-		border: 1px solid var(--line);
-		border-radius: var(--r-card);
-		background: var(--bg);
-		font-family: var(--font);
-		line-height: 1.4;
-		text-align: center;
-	}
-	.prose pre.mermaid:not([data-processed]) {
-		color: transparent;
-	}
-	.prose pre.mermaid svg {
-		max-width: 100%;
-		height: auto;
-	}
-
-	/* 표 */
-	.prose .table-wrap {
-		margin: var(--sp-8) 0;
-		overflow-x: auto;
-		border: 1px solid var(--line);
-		border-radius: var(--r-card);
-	}
-	.prose table {
-		width: 100%;
-		border-collapse: collapse;
-		font-size: var(--fs-ui);
-		line-height: 1.5;
-	}
-	.prose th,
-	.prose td {
-		padding: 11px var(--sp-4);
-		border-bottom: 1px solid var(--line);
-		text-align: left;
-	}
-	.prose td {
-		min-width: 5em;
-		overflow-wrap: normal;
-	}
-	.prose th {
-		background: var(--bg-sub);
-		font-weight: 600;
-		color: var(--ink);
-		white-space: nowrap;
-	}
-	.prose tbody tr:last-child td {
-		border-bottom: 0;
-	}
-
-	/* 그림 */
-	.prose img {
-		display: block;
-		margin: var(--sp-8) auto;
-		border-radius: var(--r-card);
-	}
-	.prose figure {
-		margin: var(--sp-8) 0;
-	}
-	.prose figure img {
-		margin: 0 auto;
-	}
-	.prose figcaption {
-		margin-top: var(--sp-3);
-		text-align: center;
-		font-size: var(--fs-sub);
-		color: var(--soft);
-		line-height: 1.5;
-	}
-
-	/* 구분선: 점 세 개 */
-	.prose hr {
-		margin: var(--sp-12) 0;
-		border: 0;
-		text-align: center;
-	}
-	.prose hr::before {
-		content: '· · ·';
-		color: var(--faint);
-		letter-spacing: 0.6em;
-		font-size: 18px;
-	}
-
-	/* 소제목 링크 (#) */
-	.prose .heading-anchor {
-		margin-left: 0.4rem;
-		color: var(--faint);
-		font-weight: 400;
-		text-decoration: none;
-		opacity: 0;
-		transition: opacity 0.15s ease;
-	}
-	.prose h2:hover .heading-anchor,
-	.prose h3:hover .heading-anchor,
-	.prose h4:hover .heading-anchor,
-	.prose .heading-anchor:focus-visible {
-		opacity: 1;
-	}
-	.prose .heading-anchor:hover {
-		color: var(--accent);
-	}
-	@media (hover: none) {
-		.prose .heading-anchor {
-			display: none;
-		}
-	}
-
-	@media (min-width: 720px) {
-		.prose pre {
-			padding: var(--sp-4) var(--sp-5);
-			font-size: 13.5px;
-		}
-		.prose pre.mermaid {
-			padding: var(--sp-8);
-		}
+	@media (max-width: 760px) {
+		.post-hero { min-height: 460px; }
+		.post-hero-in { padding-top: 100px; padding-bottom: 40px; }
+		.post-lead { font-size: 15.5px; }
+		.prose { padding-top: 48px; font-size: 16px; line-height: 1.9; }
+		.prose :global(h2) { font-size: 24px; margin-top: 56px; }
+		.related-grid { grid-template-columns: 1fr; gap: 32px; }
+		.post-nav { grid-template-columns: 1fr; }
+		.post-nav .next { text-align: left; }
 	}
 </style>

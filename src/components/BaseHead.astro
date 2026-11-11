@@ -58,18 +58,14 @@ const jsonLd = isArticle
 		};
 ---
 
-<!-- Set theme before paint to avoid flash -->
-<script is:inline>
-	const theme =
-		localStorage.getItem('theme') ||
-		(matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-	document.documentElement.dataset.theme = theme;
-</script>
+<!-- 어두운 바탕 하나로 (참고 디자인이 검은 바탕) -->
+<script is:inline>document.documentElement.dataset.theme = 'dark';</script>
 
 <!-- Global Metadata -->
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<meta name="color-scheme" content="light dark" />
+<meta name="color-scheme" content="dark" />
+<meta name="theme-color" content="#000000" />
 
 <!-- Pretendard (Korean web font) -->
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
