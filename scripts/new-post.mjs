@@ -1,98 +1,141 @@
 #!/usr/bin/env node
-// 새 essay 초안 틀을 만든다. 글 내용은 만들지 않는다(틀만).
-// 사용법: node scripts/new-post.mjs --date 2026-11-11 --slug <slug> [--input 재료.md]
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import path from 'node:path';
+// 하루 1편 글 틀 만들기 (의존성 없음)
+// 사용: npm run new-post -- --title "제목" --category 카테고리 [--date YYYY-MM-DD] [--slug x] [--input 재료.md]
+// --input: 재료 파일 내용을 글 맨 아래 HTML 주석(<!-- 재료 ... -->)으로 붙인다. 발행 전에 지워야 한다(publish-post 가 막음).
+// 결과: src/content/blog/YYYY/MM/YYYY-MM-DD-<slug>.md (draft: true)
+
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
-const USAGE = `사용법: node scripts/new-post.mjs --date YYYY-MM-DD --slug <slug> [--input 재료.md]
-  --date   글 날짜 (예: 2026-11-11). 파일 이름과 pubDate 에 쓰인다.
-  --slug   영문 소문자·숫자·- 만 (예: daily-note)
-  --input  (선택) 재료 파일. 내용이 글 맨 아래 HTML 주석 안에 붙는다.`;
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const BLOG_DIR = join(ROOT, 'src', 'content', 'blog');
 
-function fail(message, showUsage = false) {
+const USAGE =
+	'사용: npm run new-post -- --title "제목" --category 카테고리 [--date YYYY-MM-DD] [--slug x] [--input 재료.md]';
+
+function fail(message) {
 	console.error(`오류: ${message}`);
-	if (showUsage) console.error(`\n${USAGE}`);
+	console.error(USAGE);
 	process.exit(1);
+}
+
+function todayLocal() {
+	const d = new Date();
+	const pad = (n) => String(n).padStart(2, '0');
+	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function isValidDate(value) {
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+	const [y, m, d] = value.split('-').map(Number);
+	const date = new Date(Date.UTC(y, m - 1, d));
+	return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
+}
+
+// 영문·숫자만 남겨 slug 를 만든다. 한글만 있으면 빈 문자열이 된다.
+function slugify(value) {
+	return value
+		.normalize('NFKD')
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+}
+
+// YAML 작은따옴표 문자열 (안의 ' 는 '' 로)
+function yamlString(value) {
+	return `'${value.replace(/'/g, "''")}'`;
 }
 
 let values;
 try {
 	({ values } = parseArgs({
 		options: {
+			title: { type: 'string' },
+			category: { type: 'string' },
 			date: { type: 'string' },
 			slug: { type: 'string' },
 			input: { type: 'string' },
+			help: { type: 'boolean', short: 'h' },
 		},
 		strict: true,
 		allowPositionals: false,
 	}));
-} catch (err) {
-	fail(err.message, true);
+} catch (error) {
+	fail(error.message);
 }
 
-const { date, slug, input } = values;
-
-function isValidDate(value) {
-	if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-	const [y, m, d] = value.split('-').map(Number);
-	const dt = new Date(Date.UTC(y, m - 1, d));
-	return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
+if (values.help) {
+	console.log(USAGE);
+	process.exit(0);
 }
 
-if (!date || !isValidDate(date)) fail('--date 는 YYYY-MM-DD 형식의 실제 날짜여야 합니다.', true);
-if (!slug || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
-	fail('--slug 는 영문 소문자·숫자·- 만 쓸 수 있습니다 (앞뒤 - 와 -- 는 안 됨).', true);
+const title = (values.title ?? '').trim();
+if (!title) fail('--title 이 비었습니다.');
+
+const category = (values.category ?? '').trim();
+if (!category) fail('--category 가 비었습니다.');
+
+const date = (values.date ?? todayLocal()).trim();
+if (!isValidDate(date)) fail(`--date 형식이 잘못됐습니다: "${date}" (YYYY-MM-DD)`);
+
+let slug;
+if (values.slug !== undefined) {
+	slug = slugify(values.slug);
+	if (!slug) fail(`--slug 에 쓸 수 있는 글자(영문·숫자)가 없습니다: "${values.slug}"`);
+} else {
+	slug = slugify(title);
 }
 
-// npm run 으로 부르면 cwd 가 저장소 루트로 바뀌므로, 원래 위치(INIT_CWD) 기준으로 --input 을 찾는다.
-const baseDir = process.env.INIT_CWD || process.cwd();
+// npm run 으로 부르면 cwd 가 저장소 루트로 바뀌므로, 원래 위치(INIT_CWD) 기준으로 찾는다.
 let material = null;
-if (input !== undefined) {
-	const inputPath = path.resolve(baseDir, input);
+if (values.input !== undefined) {
+	const inputPath = resolve(process.env.INIT_CWD || process.cwd(), values.input);
 	if (!existsSync(inputPath)) fail(`재료 파일이 없습니다: ${inputPath}`);
 	material = readFileSync(inputPath, 'utf8');
 }
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const target = path.join(repoRoot, 'src', 'content', 'blog', `${date}-${slug}.md`);
+const [year, month] = date.split('-');
+const fileName = slug ? `${date}-${slug}.md` : `${date}.md`;
+const filePath = join(BLOG_DIR, year, month, fileName);
 
-// layout·summary·closingQuestion 은 1번 카드(essay 칸, feature/jarvis-c0051)의 스키마를 따른다:
-//   layout: 'default' | 'essay', summary·closingQuestion: 선택 문자열.
-// 그 카드가 머지되기 전에는 이 세 칸이 스키마에 없어 빌드 때 조용히 버려진다(오류는 안 남).
-// 문자열 칸은 스키마 검사를 통과하도록 TODO 자리 표시로 채운다. 소제목도 TODO: 를 붙여
-// 채우지 않으면 publish-post 가 막는다.
-let body = `---
-title: "TODO: 제목"
-description: "TODO: 한 줄 설명"
-summary: "TODO: 요약"
-closingQuestion: "TODO: 끝 질문"
-category: "TODO: 카테고리"
+if (existsSync(filePath)) {
+	fail(`이미 같은 파일이 있습니다 (덮어쓰지 않음): ${relative(ROOT, filePath)}`);
+}
+
+let content = `---
+title: ${yamlString(title)}
+description: ''
+pubDate: '${date}'
+category: ${yamlString(category)}
 tags: []
-pubDate: "${date}"
-layout: essay
 draft: true
 ---
 
-## TODO: 소제목 1
+## 무슨 일이 있었나
 
-## TODO: 소제목 2
+## 내가 한 것
 
-## TODO: 소제목 3
+## 배운 것
+
+## 다음에는
 `;
 
 if (material !== null) {
-	// 재료 안의 "-->" 가 주석을 일찍 닫아 빌드 결과에 새지 않도록 막는다.
+	// 재료 안의 "-->" 가 주석을 일찍 닫아 화면에 새지 않도록 막는다.
 	const safe = material.replaceAll('-->', '-- >').replace(/\s+$/, '');
-	body += `\n<!-- 재료\n${safe}\n-->\n`;
+	content += `\n<!-- 재료\n${safe}\n-->\n`;
 }
 
+mkdirSync(dirname(filePath), { recursive: true });
+// flag 'wx': 그 사이에 파일이 생겼어도 덮어쓰지 않는다
 try {
-	writeFileSync(target, body, { encoding: 'utf8', flag: 'wx' });
-} catch (err) {
-	if (err.code === 'EEXIST') fail(`같은 이름의 파일이 이미 있습니다(덮어쓰지 않음): ${path.relative(repoRoot, target)}`);
-	fail(err.message);
+	writeFileSync(filePath, content, { encoding: 'utf8', flag: 'wx' });
+} catch (error) {
+	if (error.code === 'EEXIST') fail(`이미 같은 파일이 있습니다 (덮어쓰지 않음): ${relative(ROOT, filePath)}`);
+	throw error;
 }
 
-console.log(`만들었습니다: ${path.relative(repoRoot, target)}`);
+console.log(`만들었습니다: ${relative(ROOT, filePath)}`);
+console.log(`다 쓰면 발행: npm run publish-post -- ${relative(ROOT, filePath)}`);

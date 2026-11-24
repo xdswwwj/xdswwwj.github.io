@@ -30,19 +30,26 @@ category: 'LLM 엔지니어링'
 - `heroImage`(대표 이미지)는 선택이라 없어도 됩니다.
 - 첫 글은 `src/content/blog/first-post-template.md` 에 골격을 넣어뒀습니다. **"사건 → 원칙"** 구조로, 일반론에 빠지지 않게 쓰는 템플릿이니 복사해서 채우세요.
 
-## 초안 → 발행
+### 하루 1편 글 틀 만들기
 
 ```bash
-npm run new-post -- --date 2026-11-11 --slug my-slug [--input 재료.md]   # 초안 틀 생성 (draft: true)
-npm run dev                                                              # 개발 서버에서는 초안도 보임 → 확인
-npm run publish-post -- src/content/blog/2026-11-11-my-slug.md           # draft: false, pubDate 를 오늘로
+npm run new-post -- --title "제목" --category 회고 [--date 2026-11-11] [--slug my-slug] [--input 재료.md]
 ```
 
-- 같은 이름의 파일이 있으면 `new-post` 는 덮어쓰지 않고 실패합니다. 글 내용은 만들지 않고 `TODO` 자리 표시만 채웁니다.
-- `--input` 재료는 글 맨 아래 HTML 주석에 붙습니다. 화면에는 안 보이지만 페이지 소스에는 남으니, 발행 전에 지우세요.
-- `publish-post` 는 `TODO:` 자리 표시(소제목 포함), `## 소제목 N` 그대로인 소제목, `<!-- 재료` 주석이 남아 있으면 실패합니다. 그래도 발행하려면 끝에 `--force` 를 붙입니다.
-- `npm run build`(운영 빌드)에서는 `draft: true` 글이 목록·RSS·sitemap 등에서 빠집니다. 발행해도 파일 이름(주소)은 그대로입니다.
-- `npm run test:draft` 로 이 흐름 전체를 시험합니다. 빌드는 임시 폴더에 하므로 `dist/` 는 건드리지 않습니다. 시험 글(`*-qa-draft-*.md`)을 `src/content/blog` 에 잠깐 쓰고, 끝나거나 Ctrl+C 로 멈추면 지웁니다.
+- `src/content/blog/YYYY/MM/YYYY-MM-DD-<slug>.md` 가 `draft: true` 로 만들어집니다. (날짜를 빼면 오늘)
+- slug 를 안 주면 제목의 영문·숫자로 만들고, 한글만 있으면 `YYYY-MM-DD.md` 처럼 날짜만 씁니다.
+- 같은 파일이 이미 있으면 덮어쓰지 않고 멈춥니다.
+
+- `--input` 재료 파일은 글 맨 아래 HTML 주석(`<!-- 재료 ... -->`)으로 붙습니다. 화면에는 안 보여도 페이지 소스에는 남으니 발행 전에 지우세요.
+
+**draft 공개하기**: draft 글은 `npm run dev` 에서만 보이고 빌드(배포)·RSS·사이트맵·OG 이미지에는 빠집니다. 확인이 끝나면:
+
+```bash
+npm run publish-post -- src/content/blog/2026/11/2026-11-11-my-slug.md   # draft: false, pubDate 를 오늘(서울)로
+```
+
+- 빈 `description`, 내용 없는 소제목, `TODO:`, `<!-- 재료` 주석이 남아 있으면 바꾸지 않고 멈춥니다. 그래도 발행하려면 끝에 `--force`.
+- 파일 이름(글 주소)은 바뀌지 않습니다. 바뀐 파일을 main 에 올리면 공개됩니다.
 
 ## 개인화 포인트
 
@@ -61,3 +68,7 @@ npm run preview  # 빌드 결과 미리보기
 ```
 
 가장 쉬운 길은 GitHub 저장소에 올린 뒤 **Vercel** 에 연결하는 것입니다 (푸시할 때마다 자동 배포). **GitHub Pages** 로도 배포할 수 있습니다 — 그 경우 Astro 공식 문서의 GitHub Pages 가이드를 참고하세요. 배포는 본인 계정 연동이 필요하니 직접 진행하시면 됩니다.
+
+## CI
+
+main 으로 가는 PR 마다 `.github/workflows/ci.yml` 이 `npm ci → npx astro check → npm run build → npm test` 를 돌립니다. (test 스크립트가 없으면 건너뜀)

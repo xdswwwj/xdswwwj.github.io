@@ -1,0 +1,29 @@
+---
+// 표지 — 대표 그림(heroImage)이 있으면 그 그림, 없으면 글마다 다른 어두운 빛 + 격자 (같은 글은 늘 같은 색)
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+
+type Props = { image?: ImageMetadata; seed: string; word?: string; class?: string; eager?: boolean; sizes?: string };
+const { image, seed, word = '', class: cls = '', eager = false, sizes = '100vw' } = Astro.props;
+
+const PALETTES = [
+	['rgba(16, 185, 129, 0.55)', 'rgba(6, 78, 59, 0.6)'],
+	['rgba(99, 102, 241, 0.55)', 'rgba(30, 27, 75, 0.7)'],
+	['rgba(236, 72, 153, 0.5)', 'rgba(76, 5, 25, 0.65)'],
+	['rgba(245, 158, 11, 0.45)', 'rgba(69, 26, 3, 0.7)'],
+	['rgba(56, 189, 248, 0.5)', 'rgba(8, 47, 73, 0.7)'],
+];
+let h = 0;
+for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+const [c1, c2] = PALETTES[h % PALETTES.length];
+const style = `--c1:${c1};--c2:${c2};--x:${60 + (h % 35)}%;--y:${10 + ((h >> 3) % 30)}%`;
+---
+
+<div class:list={['cover', cls]}>
+	{image ? (
+		<Image src={image} alt="" widths={[480, 960, 1600]} sizes={sizes} loading={eager ? 'eager' : 'lazy'} />
+	) : (
+		<div class="cover-art" style={style}>{word && <span class="cover-word">{word}</span>}</div>
+	)}
+	<slot />
+</div>

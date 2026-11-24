@@ -1,178 +1,43 @@
 ---
-import { SITE_TITLE } from '../consts';
-import HeaderLink from './HeaderLink.astro';
+// 검은 머리줄 — 왼쪽 글자 로고, 오른쪽 메뉴, 테두리 버튼 하나 (참고: 풀링포레스트)
+const links = [
+	{ href: '/blog/', label: '글' },
+	{ href: '/categories/', label: '분류' },
+	{ href: '/about/', label: '소개' },
+];
+const path = Astro.url.pathname;
+const on = (href: string) => path === href || (href !== '/' && path.startsWith(href));
 ---
 
-<header>
-	<nav>
-		<h2><a href="/">{SITE_TITLE}</a></h2>
-		<div class="internal-links">
-			<HeaderLink href="/">홈</HeaderLink>
-			<HeaderLink href="/blog">글</HeaderLink>
-			<HeaderLink href="/categories">카테고리</HeaderLink>
-			<HeaderLink href="/about">소개</HeaderLink>
-		</div>
-		<div class="actions">
-			<button id="theme-toggle" type="button" aria-label="테마 전환">
-				<svg class="icon-sun" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-					<circle cx="12" cy="12" r="4"></circle>
-					<path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
-				</svg>
-				<svg class="icon-moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-					<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-				</svg>
-			</button>
-			<a class="social" href="https://github.com/xdswwwj" target="_blank" rel="noopener">
-				<span class="sr-only">GitHub</span>
-				<svg viewBox="0 0 16 16" aria-hidden="true" width="22" height="22"
-					><path
-						fill="currentColor"
-						d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"
-					></path></svg
-				>
-			</a>
-		</div>
-	</nav>
+<header class="site-header">
+	<div class="wrap header-in">
+		<a class="logo" href="/" aria-label="처음으로">dev<span>-do</span></a>
+		<nav class="nav" aria-label="주 메뉴">
+			{links.map((l) => <a href={l.href} class:list={[{ on: on(l.href) }]}>{l.label}</a>)}
+			<a class="btn-line nav-cta" href="https://github.com/xdswwwj" target="_blank" rel="noopener">GitHub</a>
+		</nav>
+	</div>
 </header>
-<script is:inline>
-	(() => {
-		const btn = document.getElementById('theme-toggle');
-		if (!btn) return;
-		btn.addEventListener('click', () => {
-			const next =
-				document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-			document.documentElement.dataset.theme = next;
-			localStorage.setItem('theme', next);
-		});
-	})();
-</script>
+
 <style>
-	header {
+	.site-header {
 		position: sticky;
 		top: 0;
 		z-index: 50;
-		margin: 0;
-		padding: 0 1em;
-		background: rgba(var(--black), 0);
-		background-color: color-mix(in srgb, var(--bg) 80%, transparent);
-		backdrop-filter: saturate(180%) blur(12px);
-		-webkit-backdrop-filter: saturate(180%) blur(12px);
-		border-bottom: 1px solid var(--border);
+		background: rgba(0, 0, 0, 0.92);
+		backdrop-filter: blur(8px);
+		border-bottom: 1px solid var(--line-soft);
 	}
-	nav {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 1rem;
-		max-width: 960px;
-		margin: 0 auto;
-	}
-	h2 {
-		margin: 0;
-		font-size: 1.05rem;
-		font-weight: 700;
-		letter-spacing: -0.02em;
-	}
-	nav h2 a {
-		color: var(--text);
-		text-decoration: none;
-	}
-	nav h2 a:hover {
-		color: var(--accent);
-		text-decoration: none;
-	}
-	.internal-links {
-		display: flex;
-		gap: 0.25rem;
-	}
-	nav a {
-		padding: 1rem 0.6rem;
-		color: var(--text-muted);
-		text-decoration: none;
-		font-size: 0.95rem;
-		border-bottom: 2px solid transparent;
-		transition: color 0.15s ease, border-color 0.15s ease;
-	}
-	.internal-links a:hover {
-		color: var(--text);
-		text-decoration: none;
-	}
-	nav a.active {
-		color: var(--accent);
-		text-decoration: none;
-		border-bottom-color: var(--accent);
-	}
-	.actions {
-		display: flex;
-		align-items: center;
-		gap: 0.35rem;
-	}
-	#theme-toggle {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 38px;
-		height: 38px;
-		padding: 0;
-		border: 1px solid var(--border);
-		border-radius: 10px;
-		background: var(--surface-2);
-		color: var(--text-muted);
-		cursor: pointer;
-		transition: color 0.15s ease, border-color 0.15s ease,
-			background 0.15s ease;
-	}
-	#theme-toggle:hover {
-		color: var(--accent);
-		border-color: var(--accent);
-		background: var(--glow);
-	}
-	.icon-sun,
-	.icon-moon {
-		display: none;
-	}
-	:global(html[data-theme='light']) .icon-sun {
-		display: block;
-	}
-	:global(html[data-theme='dark']) .icon-moon {
-		display: block;
-	}
-	.social {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 38px;
-		height: 38px;
-		padding: 0;
-		color: var(--text-muted);
-		border-radius: 10px;
-		transition: color 0.15s ease, background 0.15s ease;
-	}
-	.social:hover {
-		color: var(--accent);
-		background: var(--glow);
-	}
-	@media (max-width: 720px) {
-		header {
-			padding: 0 0.6rem;
-		}
-		nav {
-			gap: 0.4rem;
-		}
-		h2 {
-			font-size: 0.95rem;
-			white-space: nowrap;
-		}
-		nav a {
-			padding: 0.85rem 0.35rem;
-			font-size: 0.85rem;
-			white-space: nowrap;
-		}
-		.internal-links {
-			gap: 0;
-		}
-		.social {
-			display: none;
-		}
+	.header-in { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+	.logo { font-size: 21px; font-weight: 700; letter-spacing: -0.04em; color: var(--ink); }
+	.logo span { font-weight: 300; }
+	.nav { display: flex; align-items: center; gap: 30px; }
+	.nav a:not(.btn-line) { font-size: 14.5px; font-weight: 500; color: var(--ink-2); transition: color 0.15s; }
+	.nav a:not(.btn-line):hover, .nav a.on { color: var(--ink); }
+	.nav-cta { margin-left: 6px; }
+	@media (max-width: 640px) {
+		.header-in { height: 56px; }
+		.nav { gap: 18px; }
+		.nav-cta { display: none; }
 	}
 </style>

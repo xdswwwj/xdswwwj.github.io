@@ -22,7 +22,3 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
-
-# test:draft 가 잠깐 만드는 시험 글 (중간에 멈춰 남아도 커밋되지 않게)
-src/content/blog/*-qa-draft-test.md
-src/content/blog/*-qa-draft-input-test.md

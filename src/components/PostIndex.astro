@@ -1,0 +1,132 @@
+---
+// 글 목록 — 맨 위 가장 새 글을 꽉 찬 표지로, 아래는 왼쪽 분류 + 카드 격자 (첫 카드는 크게)
+import type { CollectionEntry } from 'astro:content';
+import Cover from './Cover.astro';
+
+type Post = CollectionEntry<'blog'>;
+type Props = { posts: Post[]; all: Post[]; active?: string };
+const { posts, all, active = '' } = Astro.props;
+
+const counts = new Map<string, number>();
+for (const p of all) counts.set(p.data.category, (counts.get(p.data.category) ?? 0) + 1);
+const cats = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+const href = (p: Post) => `/blog/${p.id}/`;
+const catHref = (c: string) => `/categories/${encodeURIComponent(c)}/`;
+
+const [hero, ...rest] = posts;
+const [big, ...small] = rest;
+const side = small.slice(0, 2);
+const grid = small.slice(2);
+---
+
+{hero && (
+	<section class="hero">
+		<Cover image={hero.data.heroImage} seed={hero.id} class="hero-bg" eager />
+		<div class="hero-shade" />
+		<div class="wrap hero-in">
+			<a class="badge" href={catHref(hero.data.category)}>{hero.data.category}</a>
+			<h1><a href={href(hero)}>{hero.data.title}</a></h1>
+			<p class="lead">{hero.data.description}</p>
+		</div>
+	</section>
+)}
+
+<div class="wrap body">
+	<aside class="cats" aria-label="분류">
+		<p class="eyebrow">Categories</p>
+		<ul>
+			<li><a href="/blog/" class:list={[{ on: !active }]}><span>All</span><span class="n">{all.length}</span></a></li>
+			{cats.map(([c, n]) => (
+				<li><a href={catHref(c)} class:list={[{ on: active === c }]}><span>{c}</span><span class="n">{n}</span></a></li>
+			))}
+		</ul>
+	</aside>
+
+	<div class="cards">
+		{!big && <p class="empty">{hero ? '다음 글을 쓰고 있어요.' : '아직 글이 없어요.'}</p>}
+		{big && (
+			<div class="lead-row">
+				<a class="card card-big" href={href(big)}>
+					<Cover image={big.data.heroImage} seed={big.id} class="thumb thumb-big" sizes="(min-width: 960px) 620px, 100vw">
+						<span class="badge-on">{big.data.category}</span>
+					</Cover>
+					<h2>{big.data.title}</h2>
+					<p class="excerpt">{big.data.description}</p>
+				</a>
+				{side.length > 0 && (
+					<div class="side">
+						{side.map((p) => (
+							<a class="card" href={href(p)}>
+								<Cover image={p.data.heroImage} seed={p.id} class="thumb" sizes="(min-width: 960px) 300px, 100vw">
+									<span class="badge-on">{p.data.category}</span>
+								</Cover>
+								<h3>{p.data.title}</h3>
+							</a>
+						))}
+					</div>
+				)}
+			</div>
+		)}
+		{grid.length > 0 && (
+			<div class="grid">
+				{grid.map((p) => (
+					<a class="card" href={href(p)}>
+						<Cover image={p.data.heroImage} seed={p.id} class="thumb" sizes="(min-width: 960px) 300px, 100vw">
+							<span class="badge-on">{p.data.category}</span>
+						</Cover>
+						<h3>{p.data.title}</h3>
+					</a>
+				))}
+			</div>
+		)}
+	</div>
+</div>
+
+<style>
+	/* 맨 위 — 꽉 찬 표지 + 아래로 어두워지는 덮개, 글은 왼쪽 아래 */
+	.hero { position: relative; min-height: 600px; display: flex; align-items: flex-end; border-bottom: 1px solid var(--line-soft); }
+	.hero :global(.hero-bg) { position: absolute; inset: 0; }
+	.hero-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.45) 45%, rgba(0,0,0,0.92) 100%); }
+	.hero-in { position: relative; padding-bottom: 72px; }
+	.hero h1 { margin: 18px 0 0; max-width: 900px; font-size: clamp(34px, 5vw, 56px); line-height: 1.22; font-weight: 300; letter-spacing: -0.025em; color: var(--ink); }
+	.lead { margin: 18px 0 0; max-width: 680px; font-size: 17px; line-height: 1.75; color: var(--ink-2); opacity: 0.85; }
+
+	/* 아래 — 왼쪽 분류 220 + 카드 */
+	.body { display: grid; grid-template-columns: 220px 1fr; gap: 48px; padding-top: 64px; }
+	.cats ul { list-style: none; margin: 14px 0 0; padding: 0; }
+	.cats a { display: flex; justify-content: space-between; padding: 10px 14px; border-left: 2px solid transparent; font-size: 14.5px; color: var(--ink-2); }
+	.cats a:hover { color: var(--ink); }
+	.cats a.on { border-left-color: var(--ink); background: var(--panel); color: var(--ink); }
+	.cats .n { font-size: 12.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
+
+	.card { display: block; }
+	.card :global(.thumb) { aspect-ratio: 16 / 10; }
+	.card :global(.thumb img), .card :global(.thumb .cover-art) { transition: transform 0.5s ease; }
+	.card:hover :global(.thumb img), .card:hover :global(.thumb .cover-art) { transform: scale(1.03); }
+	.card h2 { margin: 18px 0 0; font-size: 24px; line-height: 1.4; font-weight: 400; letter-spacing: -0.01em; color: var(--ink); }
+	.card h3 { margin: 14px 0 0; font-size: 18px; line-height: 1.45; font-weight: 500; color: var(--ink); }
+	.card:hover h2, .card:hover h3 { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
+	.excerpt { margin: 10px 0 0; font-size: 14px; line-height: 1.65; color: var(--faint); }
+
+	.lead-row { display: grid; grid-template-columns: 2fr 1fr; gap: 40px; }
+	.card-big :global(.thumb-big) { aspect-ratio: 4 / 3; }
+	.side { display: flex; flex-direction: column; gap: 40px; }
+	.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 56px 40px; margin-top: 64px; }
+	.empty { color: var(--faint); font-size: 15px; }
+
+	@media (max-width: 960px) {
+		.hero { min-height: 480px; }
+		.hero-in { padding-bottom: 48px; }
+		.body { grid-template-columns: 1fr; gap: 32px; padding-top: 40px; }
+		.cats ul { display: flex; gap: 6px; overflow-x: auto; margin-top: 10px; }
+		.cats li { flex: none; }
+		.cats a { border-left: 0; border: 1px solid var(--line); gap: 8px; padding: 6px 12px; }
+		.cats a.on { border-color: var(--ink); }
+		.lead-row { grid-template-columns: 1fr; }
+		.grid { grid-template-columns: repeat(2, 1fr); gap: 40px 20px; margin-top: 48px; }
+	}
+	@media (max-width: 560px) {
+		.grid { grid-template-columns: 1fr; }
+		.lead { font-size: 15.5px; }
+	}
+</style>

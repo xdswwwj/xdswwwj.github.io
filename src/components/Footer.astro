@@ -1,113 +1,41 @@
 ---
-const today = new Date();
+// 짙은 회색 발바닥 — 작은 대문자 머리글 아래 링크 묶음
+import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
+const year = new Date().getFullYear();
 ---
-<footer>
-	<div class="footer-inner">
-		<span>© {today.getFullYear()} 도현의 개발 노트</span>
-		<span class="dot">·</span>
-		<a href="https://github.com/xdswwwj" target="_blank" rel="noopener">GitHub</a>
-		<span class="dot">·</span>
-		<span>Astro로 제작</span>
+
+<footer class="site-footer">
+	<div class="wrap foot-in">
+		<div class="foot-brand">
+			<p class="logo">dev<span>-do</span></p>
+			<p class="desc">{SITE_DESCRIPTION}</p>
+		</div>
+		<div class="foot-col">
+			<p class="eyebrow">Blog</p>
+			<a href="/blog/">모든 글</a>
+			<a href="/categories/">분류</a>
+			<a href="/tags/">태그</a>
+			<a href="/rss.xml">RSS</a>
+		</div>
+		<div class="foot-col">
+			<p class="eyebrow">About</p>
+			<a href="/about/">소개</a>
+			<a href="https://github.com/xdswwwj" target="_blank" rel="noopener">GitHub</a>
+		</div>
 	</div>
+	<div class="wrap foot-bottom">© {year} {SITE_TITLE}</div>
 </footer>
-<div id="cursor-glow" aria-hidden="true"></div>
-<button id="back-to-top" type="button" aria-label="맨 위로" title="맨 위로">
-	<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-		<path d="M12 19V5M5 12l7-7 7 7"></path>
-	</svg>
-</button>
-<script is:inline>
-	(() => {
-		const btn = document.getElementById('back-to-top');
-		if (btn) {
-			const toggle = () => btn.classList.toggle('show', window.scrollY > 400);
-			toggle();
-			window.addEventListener('scroll', toggle, { passive: true });
-			btn.addEventListener('click', () => {
-				const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-				window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
-			});
-		}
 
-		// Site-wide cursor-follow ambient spotlight (desktop, motion-on only)
-		const glow = document.getElementById('cursor-glow');
-		const fine = matchMedia('(pointer: fine)').matches;
-		const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-		if (glow && fine && !reduce) {
-			const root = document.documentElement;
-			let raf = 0;
-			window.addEventListener('pointermove', (e) => {
-				if (raf) return;
-				raf = requestAnimationFrame(() => {
-					raf = 0;
-					root.style.setProperty('--mx', e.clientX + 'px');
-					root.style.setProperty('--my', e.clientY + 'px');
-					glow.classList.add('on');
-				});
-			}, { passive: true });
-			document.addEventListener('mouseleave', () => glow.classList.remove('on'));
-		}
-	})();
-</script>
 <style>
-	footer {
-		flex-shrink: 0;
-		padding: 2.5em 1em 3em 1em;
-		text-align: center;
-		color: var(--text-muted);
-		font-size: 0.9rem;
-		border-top: 1px solid var(--border);
-	}
-	.footer-inner {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		align-items: center;
-		gap: 0.5em;
-	}
-	.dot { color: var(--border); }
-	footer a { color: var(--text-muted); text-decoration: none; }
-	footer a:hover { color: var(--accent); }
-
-	#back-to-top {
-		position: fixed;
-		right: clamp(1rem, 4vw, 2rem);
-		bottom: clamp(1rem, 4vw, 2rem);
-		z-index: 60;
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 44px;
-		height: 44px;
-		padding: 0;
-		border: 1px solid var(--border);
-		border-radius: 12px;
-		background: color-mix(in srgb, var(--surface) 85%, transparent);
-		backdrop-filter: saturate(180%) blur(8px);
-		-webkit-backdrop-filter: saturate(180%) blur(8px);
-		color: var(--text-muted);
-		cursor: pointer;
-		box-shadow: var(--box-shadow);
-		opacity: 0;
-		transform: translateY(12px) scale(0.9);
-		pointer-events: none;
-		transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
-			color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
-	}
-	#back-to-top.show {
-		opacity: 1;
-		transform: translateY(0) scale(1);
-		pointer-events: auto;
-	}
-	#back-to-top:hover {
-		color: var(--accent);
-		border-color: var(--accent);
-		background: var(--glow);
-		transform: translateY(-2px) scale(1);
-	}
-	@media (prefers-reduced-motion: reduce) {
-		#back-to-top { transition: opacity 0.2s ease; transform: none; }
-		#back-to-top.show { transform: none; }
-		#back-to-top:hover { transform: none; }
-	}
+	.site-footer { margin-top: 120px; background: var(--footer); padding: 64px 0 40px; }
+	.foot-in { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 40px; }
+	.logo { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.04em; color: var(--ink); }
+	.logo span { font-weight: 300; }
+	.desc { margin: 10px 0 0; max-width: 360px; font-size: 14px; color: var(--soft); }
+	.foot-col { display: flex; flex-direction: column; gap: 10px; }
+	.foot-col .eyebrow { margin: 0 0 6px; letter-spacing: 0.2em; }
+	.foot-col a { font-size: 14.5px; color: var(--ink-2); }
+	.foot-col a:hover { color: var(--ink); }
+	.foot-bottom { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--line); font-size: 13px; color: var(--faint); }
+	@media (max-width: 640px) { .foot-in { grid-template-columns: 1fr 1fr; } .foot-brand { grid-column: 1 / -1; } }
 </style>

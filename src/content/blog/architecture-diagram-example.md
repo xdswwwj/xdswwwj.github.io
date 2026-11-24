@@ -4,6 +4,7 @@ description: '마크다운 안에서 코드로 다이어그램을 그리는 방�
 pubDate: 'Jun 28 2026'
 category: '아키텍처'
 tags: ['아키텍처', '다이어그램', 'Mermaid', '마크다운']
+heroImage: '../../assets/covers/architecture-diagram-example.jpg'
 ---
 
 글 안에서 ` ```mermaid ` 코드블록을 쓰면 다이어그램으로 렌더링됩니다. 이미지가 아니라 텍스트라서 글과 함께 git으로 관리되고, 화살표 하나 고칠 때 텍스트만 수정하면 됩니다.

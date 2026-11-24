@@ -1,14 +1,17 @@
 ---
-import { Image } from 'astro:assets';
+// 글 화면 — 참고: 풀링포레스트 글
+// 꽉 찬 표지(어두운 덮개) 위에 분류 배지 · 가는 큰 제목 · 요약 · 가는 줄 · 글쓴이, 아래는 가운데 한 줄 본문
 import type { CollectionEntry } from 'astro:content';
 import BaseHead from '../components/BaseHead.astro';
+import Cover from '../components/Cover.astro';
 import Footer from '../components/Footer.astro';
-import FormattedDate from '../components/FormattedDate.astro';
 import Header from '../components/Header.astro';
+import { formatDotDate, getSortedPosts } from '../lib/posts';
 
 type Heading = { depth: number; slug: string; text: string };
-
-type Props = CollectionEntry<'blog'>['data'] & {
+type Props = Omit<CollectionEntry<'blog'>['data'], 'draft' | 'tags'> & {
+	draft?: boolean;
+	tags?: string[];
 	readingTime?: number;
 	headings?: Heading[];
 	ogImage?: string;
@@ -17,877 +20,195 @@ type Props = CollectionEntry<'blog'>['data'] & {
 	related?: CollectionEntry<'blog'>[];
 };
 
-const {
-	title,
-	description,
-	pubDate,
-	updatedDate,
-	heroImage,
-	category,
-	tags = [],
-	readingTime,
-	headings = [],
-	ogImage,
-	newer,
-	older,
-	related = [],
-} = Astro.props;
-
+const { title, description, pubDate, updatedDate, heroImage, category, tags = [], readingTime, headings = [], ogImage, newer, older, related = [] } = Astro.props;
 const isArticle = readingTime !== undefined;
-const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
+const catHref = `/categories/${encodeURIComponent(category)}/`;
+const seed = Astro.url.pathname;
+// 왼쪽 메뉴 — 목록과 같은 분류 + 이 글의 차례
+const all = await getSortedPosts();
+const counts = new Map<string, number>();
+for (const p of all) counts.set(p.data.category, (counts.get(p.data.category) ?? 0) + 1);
+const cats = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+const toc = headings.filter((h) => h.depth === 2);
 ---
 
 <html lang="ko">
 	<head>
-		<BaseHead
-			title={title}
-			description={description}
-			image={heroImage}
-			ogImage={ogImage}
-			type={isArticle ? 'article' : 'website'}
-			pubDate={pubDate}
-			updatedDate={updatedDate}
-			category={category}
-		/>
-		<style>
-			main { width: 100%; max-width: 100%; margin: 0; padding: 0; }
-			.hero-image { width: 100%; max-width: 1020px; margin: 2rem auto 0; padding: 0 1em; }
-			.hero-image img { display: block; margin: 0 auto; border-radius: 14px; box-shadow: var(--box-shadow); }
-			.prose {
-				width: 720px;
-				max-width: calc(100% - 2em);
-				margin: auto;
-				padding: 2rem 1em 3rem;
-				color: var(--text);
-			}
-			.breadcrumb {
-				display: flex;
-				flex-wrap: wrap;
-				align-items: center;
-				gap: 0.4rem;
-				font-size: 0.85rem;
-				color: var(--text-muted);
-				margin-bottom: 1.75rem;
-			}
-			.breadcrumb a { color: var(--text-muted); text-decoration: none; }
-			.breadcrumb a:hover { color: var(--accent); }
-			.breadcrumb .sep { opacity: 0.4; }
-			.breadcrumb .current { color: var(--text); font-weight: 600; }
-			.title { margin-bottom: 2.5rem; }
-			.title h1 { margin: 0; font-size: clamp(2rem, 5vw, 2.6rem); letter-spacing: -0.03em; line-height: 1.15; }
-			.date { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.9rem; font-size: 0.9rem; color: var(--text-muted); }
-			.date a { color: var(--accent); text-decoration: none; font-weight: 600; }
-			.cat-pill {
-				display: inline-flex;
-				align-items: center;
-				padding: 0.2rem 0.7rem;
-				border-radius: 999px;
-				background: rgba(var(--accent-rgb), 0.12);
-				font-size: 0.82rem;
-			}
-			.cat-pill:hover { background: rgba(var(--accent-rgb), 0.2); text-decoration: none; }
-			.dotsep { opacity: 0.4; }
-			.last-updated-on { font-style: italic; }
-			.title hr { margin: 1.5rem 0 0; }
-			.tag-list {
-				display: flex;
-				flex-wrap: wrap;
-				gap: 0.45rem;
-				list-style: none;
-				margin: 1rem 0 0;
-				padding: 0;
-			}
-			.tag-list a {
-				display: inline-block;
-				padding: 0.22rem 0.65rem;
-				font-size: 0.82rem;
-				font-weight: 500;
-				color: var(--text-muted);
-				background: var(--surface-2);
-				border: 1px solid var(--border);
-				border-radius: 8px;
-				text-decoration: none;
-				transition: color 0.15s ease, border-color 0.15s ease;
-			}
-			.tag-list a:hover {
-				color: var(--accent);
-				border-color: var(--accent);
-				text-decoration: none;
-			}
-			/* ── Article body typography ───────────────────────────── */
-			.prose :global(p) {
-				line-height: 1.85;
-				margin: 0 0 1.5em;
-			}
-			/* Lead paragraph (first paragraph after the title rule) */
-			.prose > :global(p:first-of-type) {
-				font-size: 1.15em;
-				line-height: 1.7;
-				color: var(--text);
-			}
-
-			.prose :global(h2),
-			.prose :global(h3),
-			.prose :global(h4) {
-				scroll-margin-top: 5rem;
-				letter-spacing: -0.02em;
-			}
-			.prose :global(h2) {
-				margin-top: 3rem;
-				margin-bottom: 1rem;
-				padding-bottom: 0.4rem;
-				font-size: 1.6rem;
-				border-bottom: 1px solid var(--border);
-			}
-			.prose :global(h3) {
-				margin-top: 2.25rem;
-				margin-bottom: 0.75rem;
-				font-size: 1.3rem;
-			}
-			.prose :global(h4) {
-				margin-top: 1.75rem;
-				margin-bottom: 0.6rem;
-				font-size: 1.1rem;
-			}
-			.prose :global(h2 + p),
-			.prose :global(h3 + p),
-			.prose :global(h4 + p) {
-				margin-top: 0;
-			}
-
-			/* Links inside body */
-			.prose :global(a) {
-				font-weight: 500;
-				text-decoration: underline;
-				text-decoration-color: rgba(var(--accent-rgb), 0.4);
-				text-underline-offset: 3px;
-				text-decoration-thickness: 1.5px;
-				transition: color 0.15s ease, text-decoration-color 0.15s ease;
-			}
-			.prose :global(a:hover) {
-				text-decoration-color: var(--accent);
-			}
-
-			/* Lists */
-			.prose :global(ul),
-			.prose :global(ol) {
-				margin: 0 0 1.5em;
-				padding-left: 1.5em;
-			}
-			.prose :global(li) {
-				margin: 0.4em 0;
-				line-height: 1.8;
-			}
-			.prose :global(li::marker) {
-				color: var(--accent);
-			}
-			.prose :global(li > ul),
-			.prose :global(li > ol) {
-				margin: 0.4em 0;
-			}
-
-			/* Inline code */
-			.prose :global(:not(pre) > code) {
-				color: var(--accent);
-				background: rgba(var(--accent-rgb), 0.08);
-				border: 1px solid rgba(var(--accent-rgb), 0.18);
-				font-weight: 500;
-			}
-
-			/* Code blocks */
-			.prose :global(pre) {
-				margin: 1.75em 0;
-				box-shadow: var(--box-shadow);
-			}
-
-			/* Blockquote */
-			.prose :global(blockquote) {
-				position: relative;
-				margin: 1.75em 0;
-				padding: 1em 1.25em 1em 1.5em;
-				border-left: 3px solid var(--accent);
-				border-radius: 0 12px 12px 0;
-				background: rgba(var(--accent-rgb), 0.05);
-				color: var(--text);
-				font-size: 1.02em;
-				font-style: normal;
-			}
-			.prose :global(blockquote p) {
-				margin-bottom: 0.75em;
-			}
-
-			/* GitHub-style callouts (> [!NOTE] etc.) */
-			.prose :global(.callout) {
-				--callout: var(--accent);
-				position: relative;
-				margin: 1.85em 0;
-				padding: 1em 1.25em;
-				border-left: 4px solid var(--callout);
-				border-radius: 0 12px 12px 0;
-				background: color-mix(in srgb, var(--callout) 7%, transparent);
-				color: var(--text);
-				font-style: normal;
-			}
-			.prose :global(.callout-note) { --callout: #3b82f6; }
-			.prose :global(.callout-tip) { --callout: #22c55e; }
-			.prose :global(.callout-important) { --callout: #8b5cf6; }
-			.prose :global(.callout-warning) { --callout: #f59e0b; }
-			.prose :global(.callout-caution) { --callout: #ef4444; }
-			.prose :global(.callout-head) {
-				display: flex;
-				align-items: center;
-				gap: 0.45rem;
-				margin-bottom: 0.5em;
-				font-size: 0.85rem;
-				font-weight: 700;
-				letter-spacing: 0.01em;
-				color: var(--callout);
-			}
-			.prose :global(.callout-head svg) {
-				width: 17px;
-				height: 17px;
-				flex-shrink: 0;
-			}
-			.prose :global(.callout > p:last-child) {
-				margin-bottom: 0;
-			}
-
-			/* Tables */
-			.prose :global(.table-wrap),
-			.prose :global(table) {
-				display: block;
-				overflow-x: auto;
-			}
-			.prose :global(table) {
-				margin: 1.75em 0;
-				border: 1px solid var(--border);
-				border-radius: 12px;
-				border-collapse: separate;
-				border-spacing: 0;
-				font-size: 0.95em;
-			}
-			.prose :global(th),
-			.prose :global(td) {
-				border: none;
-				border-bottom: 1px solid var(--border);
-				padding: 0.7em 1em;
-			}
-			.prose :global(thead th) {
-				background: var(--surface-2);
-				font-weight: 600;
-				white-space: nowrap;
-			}
-			.prose :global(tbody tr:last-child td) {
-				border-bottom: none;
-			}
-			.prose :global(tbody tr:nth-child(even)) {
-				background: color-mix(in srgb, var(--surface-2) 50%, transparent);
-			}
-
-			/* Images & figures */
-			.prose :global(img) {
-				display: block;
-				margin: 1.75em auto;
-				border-radius: 14px;
-				box-shadow: var(--box-shadow);
-			}
-			.prose :global(figure) {
-				margin: 1.75em 0;
-			}
-			.prose :global(figcaption) {
-				margin-top: 0.7em;
-				text-align: center;
-				font-size: 0.88em;
-				color: var(--text-muted);
-			}
-
-			/* Horizontal rule */
-			.prose :global(hr) {
-				margin: 3rem 0;
-				border: none;
-				height: 1px;
-				background: linear-gradient(
-					to right,
-					transparent,
-					var(--border) 20%,
-					var(--border) 80%,
-					transparent
-				);
-			}
-
-			/* Mermaid diagrams */
-			.prose :global(pre.mermaid) {
-				border: none;
-				background: none;
-				padding: 0;
-				margin: 1.75em 0;
-				box-shadow: none;
-				text-align: center;
-				display: flex;
-				justify-content: center;
-			}
-
-			/* Related posts */
-			.related {
-				width: 720px;
-				max-width: calc(100% - 2em);
-				margin: 0 auto;
-				padding: 2.5rem 1em 0;
-			}
-			.related-title {
-				margin: 0 0 1.1rem;
-				font-size: 0.85rem;
-				text-transform: uppercase;
-				letter-spacing: 0.1em;
-				color: var(--text-muted);
-			}
-			.related-list {
-				list-style: none;
-				margin: 0;
-				padding: 0;
-				display: grid;
-				grid-template-columns: repeat(3, 1fr);
-				gap: 0.75rem;
-			}
-			.related-list a {
-				display: flex;
-				flex-direction: column;
-				gap: 0.35rem;
-				height: 100%;
-				padding: 1rem 1.1rem;
-				border: 1px solid var(--border);
-				border-radius: 14px;
-				background: var(--surface);
-				color: inherit;
-				text-decoration: none;
-				transition: border-color 0.15s ease, transform 0.1s ease,
-					box-shadow 0.15s ease;
-			}
-			.related-list a:hover {
-				border-color: rgba(var(--accent-rgb), 0.5);
-				box-shadow: var(--box-shadow);
-				transform: translateY(-2px);
-				text-decoration: none;
-			}
-			.related-cat {
-				font-size: 0.78rem;
-				font-weight: 600;
-				color: var(--accent);
-			}
-			.related-h {
-				font-size: 1rem;
-				font-weight: 600;
-				letter-spacing: -0.01em;
-				line-height: 1.4;
-			}
-			.related-list a:hover .related-h { color: var(--accent); }
-			.related-desc {
-				font-size: 0.85rem;
-				color: var(--text-muted);
-				line-height: 1.5;
-				display: -webkit-box;
-				-webkit-line-clamp: 2;
-				-webkit-box-orient: vertical;
-				overflow: hidden;
-			}
-			@media (max-width: 640px) {
-				.related-list { grid-template-columns: 1fr; }
-			}
-
-			/* Post footer navigation */
-			.post-nav {
-				width: 720px;
-				max-width: calc(100% - 2em);
-				margin: 0 auto;
-				padding: 2rem 1em 3rem;
-			}
-			.back-to-list {
-				display: inline-flex;
-				align-items: center;
-				gap: 0.4rem;
-				font-size: 0.9rem;
-				font-weight: 600;
-				color: var(--text-muted);
-				margin-bottom: 1.5rem;
-			}
-			.back-to-list:hover { color: var(--accent); text-decoration: none; }
-			.adjacent {
-				display: grid;
-				grid-template-columns: 1fr 1fr;
-				gap: 0.75rem;
-			}
-			.adjacent a {
-				display: flex;
-				flex-direction: column;
-				gap: 0.3rem;
-				padding: 1rem 1.2rem;
-				border: 1px solid var(--border);
-				border-radius: 14px;
-				background: var(--surface);
-				color: inherit;
-				text-decoration: none;
-				transition: border-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
-			}
-			.adjacent a:hover {
-				border-color: rgba(var(--accent-rgb), 0.5);
-				box-shadow: var(--box-shadow);
-				transform: translateY(-2px);
-				text-decoration: none;
-			}
-			.adjacent .dir { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
-			.adjacent .next-title { font-size: 1rem; font-weight: 600; letter-spacing: -0.01em; }
-			.adjacent a:hover .next-title { color: var(--accent); }
-			.adjacent .to-older { text-align: right; }
-			.adjacent .to-older.solo { grid-column: 2; }
-			@media (max-width: 560px) {
-				.adjacent { grid-template-columns: 1fr; }
-				.adjacent .to-older { text-align: left; }
-				.adjacent .to-older.solo { grid-column: 1; }
-			}
-
-			/* Reading progress bar */
-			#read-progress {
-				position: fixed;
-				top: 0;
-				left: 0;
-				height: 3px;
-				width: 0;
-				background: var(--accent-gradient);
-				box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.5);
-				z-index: 60;
-				transition: width 0.08s linear;
-			}
-
-			/* Code block with toolbar (language label + copy) */
-			.prose :global(.code-block) {
-				margin: 1.85em 0;
-				border: 1px solid var(--border);
-				border-radius: 14px;
-				overflow: hidden;
-				box-shadow: var(--box-shadow);
-			}
-			.prose :global(.code-toolbar) {
-				display: flex;
-				align-items: center;
-				justify-content: space-between;
-				padding: 0.5rem 0.55rem 0.5rem 1rem;
-				background: var(--surface-2);
-				border-bottom: 1px solid var(--border);
-			}
-			.prose :global(.code-lang) {
-				font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
-				font-size: 0.72rem;
-				font-weight: 700;
-				text-transform: uppercase;
-				letter-spacing: 0.06em;
-				color: var(--text-muted);
-			}
-			.prose :global(.code-copy) {
-				display: inline-flex;
-				align-items: center;
-				gap: 0.35rem;
-				font-size: 0.74rem;
-				font-weight: 600;
-				color: var(--text-muted);
-				background: transparent;
-				border: 1px solid var(--border);
-				border-radius: 8px;
-				padding: 0.28rem 0.6rem;
-				cursor: pointer;
-				transition: color 0.15s ease, border-color 0.15s ease,
-					background 0.15s ease;
-			}
-			.prose :global(.code-copy:hover) {
-				color: var(--accent);
-				border-color: var(--accent);
-				background: rgba(var(--accent-rgb), 0.08);
-			}
-			.prose :global(.code-copy.copied) {
-				color: #16a34a;
-				border-color: rgba(22, 163, 74, 0.5);
-				background: rgba(22, 163, 74, 0.1);
-			}
-			.prose :global(.code-copy svg) { width: 14px; height: 14px; }
-			.prose :global(.code-block pre) {
-				margin: 0;
-				border: none;
-				border-radius: 0;
-				box-shadow: none;
-			}
-
-			/* Heading anchor links */
-			.prose :global(.heading-anchor) {
-				margin-left: 0.45rem;
-				color: var(--text-muted);
-				font-weight: 400;
-				text-decoration: none;
-				opacity: 0;
-				transition: opacity 0.15s ease, color 0.15s ease;
-			}
-			.prose :global(h2:hover) .heading-anchor,
-			.prose :global(h3:hover) .heading-anchor,
-			.prose :global(h4:hover) .heading-anchor {
-				opacity: 0.55;
-			}
-			.prose :global(.heading-anchor:hover) {
-				opacity: 1;
-				color: var(--accent);
-				text-decoration: none;
-			}
-			@media (max-width: 720px) {
-				.prose :global(.heading-anchor) { display: none; }
-			}
-
-			/* ── Floating table of contents ──────────────────────── */
-			.toc {
-				display: none;
-			}
-			@media (min-width: 1200px) {
-				.toc {
-					display: block;
-					position: fixed;
-					top: 50%;
-					transform: translateY(-50%);
-					left: max(1.5rem, calc(50vw - 360px - 24px - 220px));
-					width: 220px;
-					max-height: 70vh;
-					overflow-y: auto;
-					padding-right: 0.5rem;
-					z-index: 30;
-				}
-				.toc-title {
-					margin: 0 0 0.75rem;
-					font-size: 0.72rem;
-					font-weight: 700;
-					text-transform: uppercase;
-					letter-spacing: 0.1em;
-					color: var(--text-muted);
-				}
-				.toc ul {
-					list-style: none;
-					margin: 0;
-					padding: 0;
-					border-left: 1px solid var(--border);
-				}
-				.toc li {
-					margin: 0;
-				}
-				.toc-d3 a {
-					padding-left: 1.6rem;
-					font-size: 0.82rem;
-				}
-				.toc a {
-					display: block;
-					padding: 0.32rem 0 0.32rem 0.9rem;
-					margin-left: -1px;
-					border-left: 2px solid transparent;
-					font-size: 0.86rem;
-					line-height: 1.4;
-					color: var(--text-muted);
-					text-decoration: none;
-					transition: color 0.15s ease, border-color 0.15s ease;
-				}
-				.toc a:hover {
-					color: var(--text);
-					text-decoration: none;
-				}
-				.toc a.active {
-					color: var(--accent);
-					border-left-color: var(--accent);
-					font-weight: 600;
-				}
-			}
-			/* Hide TOC when viewport can't fit it beside the content */
-			@media (min-width: 1200px) and (max-height: 480px) {
-				.toc { position: absolute; }
-			}
-		</style>
+		<BaseHead title={title} description={description} image={heroImage} ogImage={ogImage}
+			type={isArticle ? 'article' : 'website'} pubDate={pubDate} updatedDate={updatedDate} category={category} />
 	</head>
-
 	<body>
-		{isArticle && <div id="read-progress"></div>}
 		<Header />
 		<main>
-			{
-				isArticle && toc.length > 1 && (
-					<nav class="toc" aria-label="목차">
-						<p class="toc-title">목차</p>
+			<section class:list={['post-hero', { plain: !isArticle }]}>
+				{isArticle && <Cover image={heroImage} seed={seed} class="post-hero-bg" eager />}
+				{isArticle && <div class="post-hero-shade" />}
+				<div class="wrap post-grid post-hero-in"><div aria-hidden="true" /><div>
+					{isArticle && <a class="badge" href={catHref}>{category}</a>}
+					<h1>{title}</h1>
+					<p class="post-lead">{description}</p>
+					{isArticle && (
+						<div class="byline">
+							<p class="who">김도현</p>
+							<p class="role">풀스택 개발자 · {formatDotDate(pubDate)}{readingTime ? ` · ${readingTime}분 읽기` : ''}</p>
+						</div>
+					)}
+				</div></div>
+			</section>
+
+			<div class="wrap post-grid">
+				<aside class="side-menu" aria-label="메뉴">
+					<div class="side-sticky">
+						<p class="eyebrow">Categories</p>
 						<ul>
-							{toc.map((h) => (
-								<li class={`toc-d${h.depth}`}>
-									<a href={`#${h.slug}`} data-slug={h.slug}>
-										{h.text}
-									</a>
-								</li>
+							<li><a href="/blog/"><span>All</span><span class="n">{all.length}</span></a></li>
+							{cats.map(([c, n]) => (
+								<li><a href={`/categories/${encodeURIComponent(c)}/`} class:list={[{ on: isArticle && c === category }]}><span>{c}</span><span class="n">{n}</span></a></li>
 							))}
 						</ul>
-					</nav>
-				)
-			}
-			<article>
-				<div class="hero-image">
-					{heroImage && <Image width={1020} height={510} src={heroImage} alt="" />}
-				</div>
-				<div class="prose">
-					{
-						isArticle && (
-							<nav class="breadcrumb rise" aria-label="Breadcrumb">
-								<a href="/">홈</a>
-								<span class="sep">/</span>
-								<a href="/blog">글</a>
-								<span class="sep">/</span>
-								<a href={`/categories/${encodeURIComponent(category)}/`}>{category}</a>
-							</nav>
-						)
-					}
-					<div class="title rise" style="animation-delay: 0.06s">
-						<div class="date">
-							<a class="cat-pill" href={`/categories/${encodeURIComponent(category)}/`}>{category}</a>
-							<FormattedDate date={pubDate} />
-							{readingTime && <><span class="dotsep">·</span><span>{readingTime}분 읽기</span></>}
-							{
-								updatedDate && (
-									<span class="last-updated-on">
-										· 수정 <FormattedDate date={updatedDate} />
-									</span>
-								)
-							}
-						</div>
-						<h1>{title}</h1>
-						{
-							tags.length > 0 && (
-								<ul class="tag-list">
-									{tags.map((t) => (
-										<li>
-											<a href={`/tags/${encodeURIComponent(t)}/`}>#{t}</a>
-										</li>
-									))}
-								</ul>
-							)
-						}
-						<hr />
+						{toc.length > 1 && (
+							<>
+								<p class="eyebrow toc-head">On this page</p>
+								<ul class="toc">{toc.map((h) => <li><a href={`#${h.slug}`}>{h.text}</a></li>)}</ul>
+							</>
+						)}
 					</div>
+				</aside>
+				<article class="prose">
 					<slot />
-				</div>
-			</article>
-			{
-				isArticle && related.length > 0 && (
-					<section class="related" aria-label="연관 글">
-						<h2 class="related-title">함께 읽으면 좋은 글</h2>
-						<ul class="related-list">
-							{related.map((r) => (
-								<li>
-									<a href={`/blog/${r.id}/`}>
-										<span class="related-cat">{r.data.category}</span>
-										<span class="related-h">{r.data.title}</span>
-										<span class="related-desc">{r.data.description}</span>
-									</a>
-								</li>
-							))}
-						</ul>
-					</section>
-				)
-			}
-			{
-				isArticle && (
-					<nav class="post-nav" aria-label="글 네비게이션">
-						<a class="back-to-list" href="/blog">← 전체 글 목록</a>
-						<div class="adjacent">
-							{newer && (
-								<a class="to-newer" href={`/blog/${newer.id}/`}>
-									<span class="dir">← 최신 글</span>
-									<span class="next-title">{newer.data.title}</span>
-								</a>
-							)}
-							{older && (
-								<a class={`to-older${newer ? '' : ' solo'}`} href={`/blog/${older.id}/`}>
-									<span class="dir">이전 글 →</span>
-									<span class="next-title">{older.data.title}</span>
-								</a>
-							)}
-						</div>
-					</nav>
-				)
-			}
+				</article>
+			</div>
+
+			{isArticle && tags.length > 0 && (
+				<div class="wrap post-grid"><div /><div class="post-tags">
+					{tags.map((t) => <a href={`/tags/${encodeURIComponent(t)}/`}>#{t}</a>)}
+				</div></div>
+			)}
+
+			{isArticle && (newer || older) && (
+				<div class="wrap post-grid"><div /><nav class="post-nav" aria-label="이전·다음 글">
+					{older ? <a href={`/blog/${older.id}/`}><span class="lbl">← 이전 글</span><span class="t">{older.data.title}</span></a> : <span />}
+					{newer ? <a class="next" href={`/blog/${newer.id}/`}><span class="lbl">다음 글 →</span><span class="t">{newer.data.title}</span></a> : <span />}
+				</nav></div>
+			)}
+
+			{isArticle && related.length > 0 && (
+				<section class="wrap related">
+					<p class="eyebrow">Related</p>
+					<div class="related-grid">
+						{related.map((p) => (
+							<a class="rel" href={`/blog/${p.id}/`}>
+								<Cover image={p.data.heroImage} seed={`/blog/${p.id}/`} class="rel-thumb" sizes="(min-width: 960px) 380px, 100vw">
+									<span class="badge-on">{p.data.category}</span>
+								</Cover>
+								<h3>{p.data.title}</h3>
+							</a>
+						))}
+					</div>
+				</section>
+			)}
 		</main>
 		<Footer />
-		<script is:inline>
-			(() => {
-				const bar = document.getElementById('read-progress');
 
-				const onScroll = () => {
-					if (bar) {
-						const h = document.documentElement;
-						const max = h.scrollHeight - h.clientHeight;
-						bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
-					}
-				};
-				window.addEventListener('scroll', onScroll, { passive: true });
-				window.addEventListener('resize', onScroll);
-				onScroll();
-
-				// Code block toolbars
-				const copyIcon =
-					'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
-				document.querySelectorAll('.prose pre.astro-code').forEach((pre) => {
-					const lang = pre.getAttribute('data-language') || 'code';
-					const wrap = document.createElement('div');
-					wrap.className = 'code-block';
-					const toolbar = document.createElement('div');
-					toolbar.className = 'code-toolbar';
-					const label = document.createElement('span');
-					label.className = 'code-lang';
-					label.textContent = lang;
-					const copyBtn = document.createElement('button');
-					copyBtn.type = 'button';
-					copyBtn.className = 'code-copy';
-					copyBtn.innerHTML = copyIcon + '<span>복사</span>';
-					const txt = copyBtn.querySelector('span');
-					copyBtn.addEventListener('click', async () => {
-						const code = pre.querySelector('code')?.innerText ?? pre.innerText;
-						try {
-							await navigator.clipboard.writeText(code);
-							copyBtn.classList.add('copied');
-							txt.textContent = '복사됨';
-							setTimeout(() => {
-								copyBtn.classList.remove('copied');
-								txt.textContent = '복사';
-							}, 1600);
-						} catch (e) {}
-					});
-					toolbar.appendChild(label);
-					toolbar.appendChild(copyBtn);
-					pre.parentNode.insertBefore(wrap, pre);
-					wrap.appendChild(toolbar);
-					wrap.appendChild(pre);
-				});
-
-				// Heading anchors
-				document
-					.querySelectorAll('.prose h2[id], .prose h3[id], .prose h4[id]')
-					.forEach((h) => {
-						const a = document.createElement('a');
-						a.className = 'heading-anchor';
-						a.href = '#' + h.id;
-						a.setAttribute('aria-label', '이 섹션으로 가는 링크');
-						a.textContent = '#';
-						h.appendChild(a);
-					});
-
-				// GitHub-style callouts: > [!NOTE] / [!TIP] / [!IMPORTANT] / [!WARNING] / [!CAUTION]
-				const calloutMeta = {
-					note: { label: '참고', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>' },
-					tip: { label: '팁', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg>' },
-					important: { label: '중요', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' },
-					warning: { label: '주의', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>' },
-					caution: { label: '경고', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>' },
-				};
-				const calloutRe = /^\s*\[!(note|tip|important|warning|caution)\]\s*(<br\s*\/?>)?\s*/i;
-				document.querySelectorAll('.prose blockquote').forEach((bq) => {
-					const firstP = bq.querySelector('p');
-					if (!firstP) return;
-					const m = firstP.textContent.match(/^\s*\[!(note|tip|important|warning|caution)\]/i);
-					if (!m) return;
-					const type = m[1].toLowerCase();
-					firstP.innerHTML = firstP.innerHTML.replace(calloutRe, '');
-					if (!firstP.textContent.trim() && !firstP.querySelector('img, code')) {
-						firstP.remove();
-					}
-					bq.classList.add('callout', 'callout-' + type);
-					const head = document.createElement('div');
-					head.className = 'callout-head';
-					head.innerHTML =
-						calloutMeta[type].icon + '<span>' + calloutMeta[type].label + '</span>';
-					bq.insertBefore(head, bq.firstChild);
-				});
-
-				// Gentle scroll-reveal for article body blocks
-				const prose = document.querySelector('.prose');
-				const reduceMotion = window.matchMedia(
-					'(prefers-reduced-motion: reduce)'
-				).matches;
-				if (prose && 'IntersectionObserver' in window && !reduceMotion) {
-					const blocks = prose.querySelectorAll(
-						':scope > p, :scope > h2, :scope > h3, :scope > h4, :scope > ul, :scope > ol, :scope > blockquote, :scope > .callout, :scope > .code-block, :scope > table, :scope > figure, :scope > pre'
-					);
-					blocks.forEach((el) => el.classList.add('reveal'));
-					const io = new IntersectionObserver(
-						(entries) => {
-							entries.forEach((e) => {
-								if (e.isIntersecting) {
-									e.target.classList.add('in');
-									io.unobserve(e.target);
-								}
-							});
-						},
-						{ rootMargin: '0px 0px -6% 0px', threshold: 0.04 }
-					);
-					blocks.forEach((el) => io.observe(el));
-				}
-
-				// TOC scroll spy
-				const tocLinks = [...document.querySelectorAll('.toc a[data-slug]')];
-				if (tocLinks.length) {
-					const targets = tocLinks
-						.map((a) => document.getElementById(a.dataset.slug))
-						.filter(Boolean);
-					let current = null;
-					const setActive = (id) => {
-						if (id === current) return;
-						current = id;
-						tocLinks.forEach((a) =>
-							a.classList.toggle('active', a.dataset.slug === id)
-						);
-					};
-					// Activation scroll position for each heading. On short posts the
-					// headings sit below the scrollable range, so compress the points
-					// proportionally so every heading still gets its turn (no 1→4 jump).
-					const doc = document.documentElement;
-					let points = [];
-					const recalc = () => {
-						const max = Math.max(1, doc.scrollHeight - window.innerHeight);
-						const line = Math.min(window.innerHeight * 0.3, 140);
-						let pts = targets.map((t) => Math.max(0, t.offsetTop - line));
-						const last = pts[pts.length - 1];
-						if (last > max) {
-							const scale = max / last;
-							pts = pts.map((p) => p * scale);
-						}
-						points = pts;
-					};
-					const spy = () => {
-						const y = window.scrollY;
-						let idx = 0;
-						for (let i = 0; i < points.length; i++) {
-							if (y >= points[i] - 1) idx = i;
-							else break;
-						}
-						setActive(targets[idx].id);
-					};
-					const refresh = () => {
-						recalc();
-						spy();
-					};
-					recalc();
-					window.addEventListener('scroll', spy, { passive: true });
-					window.addEventListener('resize', refresh);
-					// Late layout shifts (mermaid diagrams, images, fonts) change
-					// heading positions after first paint — recalc when they settle.
-					window.addEventListener('load', refresh);
-					if ('ResizeObserver' in window) {
-						const ro = new ResizeObserver(refresh);
-						ro.observe(document.body);
-					}
-					spy();
-				}
-			})();
-		</script>
 		<script>
 			import mermaid from 'mermaid';
-			mermaid.initialize({ startOnLoad: false, theme: 'default' });
-			if (document.querySelector('.mermaid')) {
-				mermaid.run({ querySelector: '.mermaid' });
+			const nodes = [...document.querySelectorAll<HTMLElement>('.prose pre.mermaid')];
+			if (nodes.length) {
+				mermaid.initialize({
+					startOnLoad: false, theme: 'base',
+					themeVariables: {
+						darkMode: true, fontFamily: getComputedStyle(document.body).fontFamily, fontSize: '14px',
+						background: '#0a0a0b', primaryColor: '#141416', primaryBorderColor: '#3f3f46', primaryTextColor: '#fafafa',
+						secondaryColor: '#18181b', tertiaryColor: '#27272a', mainBkg: '#141416', nodeBorder: '#3f3f46',
+						textColor: '#d4d4d8', lineColor: '#71717a', clusterBkg: '#0a0a0b', clusterBorder: '#27272a', edgeLabelBackground: '#0a0a0b',
+						actorBkg: '#141416', actorBorder: '#3f3f46', actorTextColor: '#fafafa', signalColor: '#a1a1aa', signalTextColor: '#d4d4d8',
+						noteBkgColor: '#18181b', noteBorderColor: '#52525b', noteTextColor: '#fafafa',
+					},
+				});
+				mermaid.run({ nodes });
 			}
 		</script>
 	</body>
 </html>
+
+<style>
+	/* 왼쪽 메뉴 220 + 본문 (목록 화면과 같은 줄) */
+	.post-grid { display: grid; grid-template-columns: 220px minmax(0, 760px); gap: 64px; }
+	.side-menu { padding-top: 72px; }
+	.side-sticky { position: sticky; top: 96px; }
+	.side-menu ul { list-style: none; margin: 14px 0 0; padding: 0; }
+	.side-menu a { display: flex; justify-content: space-between; gap: 8px; padding: 9px 14px; border-left: 2px solid transparent; font-size: 14px; color: var(--ink-2); }
+	.side-menu a:hover { color: var(--ink); }
+	.side-menu a.on { border-left-color: var(--ink); background: var(--panel); color: var(--ink); }
+	.side-menu .n { font-size: 12.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
+	.toc-head { margin-top: 36px; }
+	.toc a { display: block; padding: 6px 14px; font-size: 13.5px; line-height: 1.5; color: var(--soft); }
+
+	.post-hero { position: relative; display: flex; align-items: flex-end; min-height: 560px; border-bottom: 1px solid var(--line-soft); }
+	.post-hero.plain { min-height: 0; }
+	.post-hero :global(.post-hero-bg) { position: absolute; inset: 0; }
+	.post-hero-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0.92) 100%); }
+	.post-hero-in { position: relative; padding-top: 140px; padding-bottom: 56px; }
+	.plain .post-hero-in { padding-top: 88px; padding-bottom: 40px; }
+	.post-hero h1 { margin: 20px 0 0; font-size: clamp(32px, 4.6vw, 52px); line-height: 1.24; font-weight: 300; letter-spacing: -0.025em; color: var(--ink); }
+	.plain h1 { margin-top: 0; }
+	.post-lead { margin: 22px 0 0; max-width: 680px; font-size: 17px; line-height: 1.75; color: var(--ink-2); opacity: 0.85; }
+	.byline { margin-top: 36px; padding-top: 22px; border-top: 1px solid var(--line-soft); }
+	.who { margin: 0; font-size: 14.5px; font-weight: 600; color: var(--ink); }
+	.role { margin: 2px 0 0; font-size: 13.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
+
+	/* 본문 */
+	.prose { padding-top: 72px; font-size: 16.5px; line-height: 1.95; color: var(--ink-2); }
+	.prose :global(p) { margin: 0 0 26px; }
+	.prose :global(h2) { margin: 72px 0 20px; font-size: 28px; line-height: 1.4; font-weight: 400; letter-spacing: -0.015em; color: var(--ink); }
+	.prose :global(h3) { margin: 48px 0 14px; font-size: 21px; line-height: 1.45; font-weight: 500; color: var(--ink); }
+	.prose :global(strong) { color: var(--ink); font-weight: 600; }
+	.prose :global(a) { color: var(--ink); text-decoration: underline; text-underline-offset: 4px; text-decoration-color: rgba(255,255,255,0.4); }
+	.prose :global(img) { width: 100%; margin: 40px 0; }
+	.prose :global(blockquote) { margin: 40px 0; padding: 2px 0 2px 22px; border-left: 1px solid #71717a; font-style: italic; color: var(--soft); }
+	.prose :global(blockquote p) { margin: 0; }
+	.prose :global(ul), .prose :global(ol) { margin: 0 0 26px; padding-left: 22px; }
+	.prose :global(li) { margin: 6px 0; }
+	.prose :global(hr) { margin: 56px 0; border: 0; border-top: 1px solid var(--line); }
+	.prose :global(code) { font-family: var(--font-mono); font-size: 0.88em; padding: 2px 6px; background: var(--panel); border-radius: 4px; color: var(--ink); }
+	.prose :global(pre) { margin: 32px 0; padding: 20px 22px; overflow-x: auto; background: var(--bg-2) !important; border: 1px solid var(--line); border-radius: 6px; font-size: 14px; line-height: 1.7; }
+	.prose :global(pre code) { padding: 0; background: none; }
+	.prose :global(pre.mermaid) { display: flex; justify-content: center; text-align: center; font-family: var(--font); }
+	.prose :global(pre.mermaid:not([data-processed])) { color: transparent; }
+	.prose :global(table) { width: 100%; margin: 32px 0; border-collapse: collapse; font-size: 15px; }
+	.prose :global(th), .prose :global(td) { padding: 12px 14px; border-bottom: 1px solid var(--line); text-align: left; }
+	.prose :global(th) { color: var(--ink); font-weight: 600; }
+
+	.post-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+	.post-tags a { padding: 4px 12px; border: 1px solid var(--line); font-size: 13px; color: var(--soft); }
+	.post-tags a:hover { color: var(--ink); border-color: var(--faint); }
+
+	.post-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 64px; padding-top: 32px; border-top: 1px solid var(--line); }
+	.post-nav a { display: flex; flex-direction: column; gap: 8px; }
+	.post-nav .next { text-align: right; }
+	.post-nav .lbl { font-size: 13px; color: var(--faint); }
+	.post-nav .t { font-size: 16px; font-weight: 500; color: var(--ink); line-height: 1.45; }
+	.post-nav a:hover .t { text-decoration: underline; text-underline-offset: 4px; }
+
+	.related { margin-top: 96px; }
+	.related-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; margin-top: 18px; }
+	.rel :global(.rel-thumb) { aspect-ratio: 16 / 10; }
+	.rel h3 { margin: 14px 0 0; font-size: 18px; line-height: 1.45; font-weight: 500; color: var(--ink); }
+	.rel:hover h3 { text-decoration: underline; text-underline-offset: 4px; }
+
+	@media (max-width: 960px) {
+		.post-grid { grid-template-columns: minmax(0, 1fr); gap: 0; }
+		.post-grid > :first-child:is(div[aria-hidden], div:empty) { display: none; }
+		.side-menu { display: none; }
+	}
+	@media (max-width: 760px) {
+		.post-hero { min-height: 460px; }
+		.post-hero-in { padding-top: 100px; padding-bottom: 40px; }
+		.post-lead { font-size: 15.5px; }
+		.prose { padding-top: 48px; font-size: 16px; line-height: 1.9; }
+		.prose :global(h2) { font-size: 24px; margin-top: 56px; }
+		.related-grid { grid-template-columns: 1fr; gap: 32px; }
+		.post-nav { grid-template-columns: 1fr; }
+		.post-nav .next { text-align: left; }
+	}
+</style>

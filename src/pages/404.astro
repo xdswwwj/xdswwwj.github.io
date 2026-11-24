@@ -12,10 +12,9 @@ import { SITE_TITLE } from '../consts';
 	</head>
 	<body>
 		<Header />
-		<main>
+		<main class="wrap">
 			<section class="notfound">
-				<div class="glow" aria-hidden="true"></div>
-				<p class="code gradient-text">404</p>
+				<p class="code num">404</p>
 				<h1>페이지를 찾을 수 없어요</h1>
 				<p class="desc">
 					주소가 바뀌었거나, 삭제된 글일 수 있어요.<br />
@@ -23,7 +22,7 @@ import { SITE_TITLE } from '../consts';
 				</p>
 				<div class="cta">
 					<a class="btn" href="/">홈으로</a>
-					<a class="btn ghost" href="/blog">전체 글 보기</a>
+					<a class="btn sub" href="/blog">전체 글 보기</a>
 				</div>
 			</section>
 		</main>
@@ -33,71 +32,72 @@ import { SITE_TITLE } from '../consts';
 
 <style>
 	.notfound {
-		position: relative;
+		padding: var(--sp-16) 0 var(--sp-10);
 		text-align: center;
-		padding: 4rem 0 5rem;
-		overflow: hidden;
-	}
-	.glow {
-		position: absolute;
-		top: -80px;
-		left: 50%;
-		transform: translateX(-50%);
-		width: 520px;
-		height: 360px;
-		background: radial-gradient(ellipse at center, var(--glow) 0%, transparent 70%);
-		filter: blur(40px);
-		pointer-events: none;
-		z-index: -1;
 	}
 	.code {
-		font-size: clamp(4rem, 16vw, 7rem);
-		font-weight: 800;
-		line-height: 1;
-		letter-spacing: -0.04em;
-		margin: 0 0 0.5rem;
+		margin-bottom: var(--sp-2);
+		font-size: 16px;
+		font-weight: 700;
+		color: var(--accent);
 	}
-	.notfound h1 {
-		font-size: clamp(1.5rem, 5vw, 2rem);
-		margin-bottom: 0.75rem;
+	h1 {
+		font-size: 28px;
+		letter-spacing: var(--ls-title);
 	}
 	.desc {
-		color: var(--text-muted);
-		margin-bottom: 2rem;
+		margin-top: var(--sp-3);
+		font-size: var(--fs-body);
 		line-height: 1.7;
+		color: var(--soft);
 	}
 	.cta {
 		display: flex;
-		gap: 0.75rem;
-		justify-content: center;
-		flex-wrap: wrap;
+		flex-direction: column;
+		gap: var(--sp-2);
+		margin-top: var(--sp-8);
 	}
 	.btn {
-		display: inline-block;
-		padding: 0.65rem 1.3rem;
-		border-radius: 12px;
-		font-size: 0.95rem;
-		font-weight: 600;
-		background: var(--accent-gradient);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 52px;
+		padding: 0 var(--sp-6);
+		border-radius: var(--r-card);
+		background: var(--accent);
 		color: var(--on-accent);
-		border: 1px solid transparent;
-		box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.3);
-		transition: transform 0.1s ease, box-shadow 0.15s ease;
+		font-size: 16px;
+		font-weight: 600;
+		transition: background-color 0.15s ease, transform 0.1s ease;
 	}
 	.btn:hover {
+		background: var(--accent-hover);
 		color: var(--on-accent);
-		text-decoration: none;
-		transform: translateY(-2px);
-		box-shadow: 0 10px 28px rgba(var(--accent-rgb), 0.4);
 	}
-	.btn.ghost {
-		background: var(--surface-2);
-		color: var(--text);
-		border-color: var(--border);
-		box-shadow: none;
+	.btn.sub {
+		background: var(--fill);
+		color: var(--ink-2);
 	}
-	.btn.ghost:hover {
-		color: var(--accent);
-		border-color: var(--accent);
+	.btn.sub:hover {
+		background: var(--fill-strong);
+		color: var(--ink-2);
+	}
+	.btn:active {
+		transform: scale(0.98);
+	}
+	@media (min-width: 720px) {
+		.notfound {
+			padding-top: 120px;
+		}
+		h1 {
+			font-size: 32px;
+		}
+		.cta {
+			flex-direction: row;
+			justify-content: center;
+		}
+		.btn {
+			min-width: 160px;
+		}
 	}
 </style>
