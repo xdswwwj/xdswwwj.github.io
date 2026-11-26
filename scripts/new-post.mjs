@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // 하루 1편 글 틀 만들기 (의존성 없음)
-// 사용: npm run new-post -- --title "제목" --category 카테고리 [--date YYYY-MM-DD] [--slug x]
+// 사용: npm run new-post -- --title "제목" --category 카테고리 [--date YYYY-MM-DD] [--slug x] [--input 재료.md]
+// --input: 재료 파일 내용을 글 맨 아래 HTML 주석(<!-- 재료 ... -->)으로 붙인다. 발행 전에 지워야 한다(publish-post 가 막음).
 // 결과: src/content/blog/YYYY/MM/YYYY-MM-DD-<slug>.md (draft: true)
 
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -12,7 +13,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const BLOG_DIR = join(ROOT, 'src', 'content', 'blog');
 
 const USAGE =
-	'사용: npm run new-post -- --title "제목" --category 카테고리 [--date YYYY-MM-DD] [--slug x]';
+	'사용: npm run new-post -- --title "제목" --category 카테고리 [--date YYYY-MM-DD] [--slug x] [--input 재료.md]';
 
 function fail(message) {
 	console.error(`오류: ${message}`);
@@ -55,6 +56,7 @@ try {
 			category: { type: 'string' },
 			date: { type: 'string' },
 			slug: { type: 'string' },
+			input: { type: 'string' },
 			help: { type: 'boolean', short: 'h' },
 		},
 		strict: true,
@@ -86,6 +88,14 @@ if (values.slug !== undefined) {
 	slug = slugify(title);
 }
 
+// npm run 으로 부르면 cwd 가 저장소 루트로 바뀌므로, 원래 위치(INIT_CWD) 기준으로 찾는다.
+let material = null;
+if (values.input !== undefined) {
+	const inputPath = resolve(process.env.INIT_CWD || process.cwd(), values.input);
+	if (!existsSync(inputPath)) fail(`재료 파일이 없습니다: ${inputPath}`);
+	material = readFileSync(inputPath, 'utf8');
+}
+
 const [year, month] = date.split('-');
 const fileName = slug ? `${date}-${slug}.md` : `${date}.md`;
 const filePath = join(BLOG_DIR, year, month, fileName);
@@ -94,7 +104,7 @@ if (existsSync(filePath)) {
 	fail(`이미 같은 파일이 있습니다 (덮어쓰지 않음): ${relative(ROOT, filePath)}`);
 }
 
-const content = `---
+let content = `---
 title: ${yamlString(title)}
 description: ''
 pubDate: '${date}'
@@ -112,6 +122,12 @@ draft: true
 ## 다음에는
 `;
 
+if (material !== null) {
+	// 재료 안의 "-->" 가 주석을 일찍 닫아 화면에 새지 않도록 막는다.
+	const safe = material.replaceAll('-->', '-- >').replace(/\s+$/, '');
+	content += `\n<!-- 재료\n${safe}\n-->\n`;
+}
+
 mkdirSync(dirname(filePath), { recursive: true });
 // flag 'wx': 그 사이에 파일이 생겼어도 덮어쓰지 않는다
 try {
@@ -122,4 +138,4 @@ try {
 }
 
 console.log(`만들었습니다: ${relative(ROOT, filePath)}`);
-console.log('다 쓰면 머리말의 draft: true 를 지우거나 false 로 바꾸세요.');
+console.log(`다 쓰면 발행: npm run publish-post -- ${relative(ROOT, filePath)}`);

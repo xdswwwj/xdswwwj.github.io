@@ -33,14 +33,23 @@ category: 'LLM 엔지니어링'
 ### 하루 1편 글 틀 만들기
 
 ```bash
-npm run new-post -- --title "제목" --category 회고 [--date 2026-11-11] [--slug my-slug]
+npm run new-post -- --title "제목" --category 회고 [--date 2026-11-11] [--slug my-slug] [--input 재료.md]
 ```
 
 - `src/content/blog/YYYY/MM/YYYY-MM-DD-<slug>.md` 가 `draft: true` 로 만들어집니다. (날짜를 빼면 오늘)
 - slug 를 안 주면 제목의 영문·숫자로 만들고, 한글만 있으면 `YYYY-MM-DD.md` 처럼 날짜만 씁니다.
 - 같은 파일이 이미 있으면 덮어쓰지 않고 멈춥니다.
 
-**draft 공개하기**: draft 글은 `npm run dev` 에서만 보이고 빌드(배포)·RSS·사이트맵에는 빠집니다. 다 쓰면 `description` 을 채우고 머리말의 `draft: true` 를 지우거나 `draft: false` 로 바꾼 뒤 main 에 올리면 공개됩니다.
+- `--input` 재료 파일은 글 맨 아래 HTML 주석(`<!-- 재료 ... -->`)으로 붙습니다. 화면에는 안 보여도 페이지 소스에는 남으니 발행 전에 지우세요.
+
+**draft 공개하기**: draft 글은 `npm run dev` 에서만 보이고 빌드(배포)·RSS·사이트맵·OG 이미지에는 빠집니다. 확인이 끝나면:
+
+```bash
+npm run publish-post -- src/content/blog/2026/11/2026-11-11-my-slug.md   # draft: false, pubDate 를 오늘(서울)로
+```
+
+- 빈 `description`, 내용 없는 소제목, `TODO:`, `<!-- 재료` 주석이 남아 있으면 바꾸지 않고 멈춥니다. 그래도 발행하려면 끝에 `--force`.
+- 파일 이름(글 주소)은 바뀌지 않습니다. 바뀐 파일을 main 에 올리면 공개됩니다.
 
 ## 개인화 포인트
 
