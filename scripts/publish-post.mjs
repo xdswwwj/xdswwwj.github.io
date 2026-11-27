@@ -1,15 +1,28 @@
 #!/usr/bin/env node
 // 초안을 발행 상태로 바꾼다: draft: true → false, pubDate → 오늘(Asia/Seoul 날짜).
 // 파일 이름(주소)과 본문은 바꾸지 않는다.
-// 사용법: node scripts/publish-post.mjs <파일> [--force]
+// 사용법: node scripts/publish-post.mjs <파일> [--force] [--allow-sensitive]
 // 빈 description, 내용 없는 소제목, TODO: 자리 표시, <!-- 재료 주석이 남아 있으면 발행하지 않는다(--force 로만 넘길 수 있음).
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { dateParts } from '../src/lib/posts-pure.mjs';
 
-const USAGE = `사용법: npm run publish-post -- src/content/blog/YYYY/MM/YYYY-MM-DD-<slug>.md [--force]
-  --force  빈 description, 내용 없는 소제목, TODO: 자리 표시, <!-- 재료 주석이 남아 있어도 발행한다.`;
+const USAGE = `사용법: npm run publish-post -- src/content/blog/YYYY/MM/YYYY-MM-DD-<slug>.md [--force] [--allow-sensitive]
+  --force  빈 description, 내용 없는 소제목, TODO: 자리 표시, <!-- 재료 주석이 남아 있어도 발행한다.
+  --allow-sensitive  금지어·비밀 모양이 있어도 일부러 발행한다. --force 로는 못 넘긴다.`;
+
+const SENSITIVE_PATTERNS = [
+	{ kind: 'API 키', pattern: /\bsk-[A-Za-z0-9_-]{16,}/g, redact: true },
+	{ kind: 'GitHub 토큰', pattern: /\bgh[pousr]_[A-Za-z0-9]{20,}/g, redact: true },
+	{ kind: 'AWS 키', pattern: /\bAKIA[0-9A-Z]{16}\b/g, redact: true },
+	{ kind: '개인 키', pattern: /-----BEGIN [A-Z ]*PRIVATE KEY-----/g },
+	{ kind: '내부 IP', pattern: /\b10\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g },
+	{ kind: '내부 IP', pattern: /\b192\.168\.\d{1,3}\.\d{1,3}\b/g },
+	{ kind: '내부 IP', pattern: /\b172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}\b/g },
+	{ kind: '이메일', pattern: /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g },
+];
 
 function fail(message, showUsage = false) {
 	console.error(`오류: ${message}`);
@@ -17,11 +30,44 @@ function fail(message, showUsage = false) {
 	process.exit(1);
 }
 
+function readBlocklist() {
+	const file = process.env.BLOG_BLOCKLIST || path.join(homedir(), '.config/blog/blocklist.txt');
+	try {
+		return readFileSync(file, 'utf8').split(/\r?\n/)
+			.map((word) => word.trim())
+			.filter((word) => word && !word.startsWith('#'));
+	} catch (err) {
+		if (err.code !== 'ENOENT') fail(`금지어 목록을 읽을 수 없습니다: ${file} (${err.code})`);
+		console.warn(`금지어 목록 없음: ${file} — 금지어 검사를 건너뜁니다`);
+		return [];
+	}
+}
+
+function findSensitive(text, blocklist) {
+	const findings = [];
+	for (const [index, content] of text.split(/\r?\n/).entries()) {
+		const line = index + 1;
+		const lowerContent = content.toLowerCase();
+		for (const word of blocklist) {
+			if (lowerContent.includes(word.toLowerCase())) findings.push({ line, kind: '금지어', match: word });
+		}
+		for (const { kind, pattern, redact } of SENSITIVE_PATTERNS) {
+			for (const [match] of content.matchAll(pattern)) {
+				findings.push({ line, kind, match: redact ? `${match.slice(0, 6)}…` : match });
+			}
+		}
+	}
+	return findings;
+}
+
 let positionals;
 let values;
 try {
 	({ positionals, values } = parseArgs({
-		options: { force: { type: 'boolean', default: false } },
+		options: {
+			force: { type: 'boolean', default: false },
+			'allow-sensitive': { type: 'boolean', default: false },
+		},
 		strict: true,
 		allowPositionals: true,
 	}));
@@ -44,6 +90,14 @@ const { year, month, day } = dateParts(new Date());
 const today = [year, String(month).padStart(2, '0'), String(day).padStart(2, '0')].join('-');
 
 let front = match[1];
+
+const sensitive = findSensitive(text, readBlocklist());
+if (sensitive.length > 0) {
+	const details = sensitive.map(({ line, kind, match }) => `  ${line}째 줄 · ${kind} 「${match}」`).join('\n');
+	const message = `밖에 나가면 안 되는 말이 있습니다:\n${details}`;
+	if (!values['allow-sensitive']) fail(message);
+	console.warn(`주의: --allow-sensitive 로 검사를 넘깁니다. ${message}`);
+}
 
 // 매일 돌리는 흐름이라, 채우지 않은 틀이나 재료가 그대로 공개되지 않게 막는다.
 const leftovers = [];

@@ -15,6 +15,8 @@ const PUBLISH_POST = join(REPO_ROOT, 'scripts', 'publish-post.mjs');
 // publish-post 는 넘겨 받은 파일만 고치므로 임시 파일에 바로 돌린다.
 function withTempWorkspace(fn) {
 	const dir = mkdtempSync(join(tmpdir(), 'blog-publish-post-test-'));
+	const blocklist = join(dir, 'blocklist.txt');
+	writeFileSync(blocklist, '', 'utf8');
 	mkdirSync(join(dir, 'scripts'));
 	const newPost = join(dir, 'scripts', 'new-post.mjs');
 	copyFileSync(NEW_POST, newPost);
@@ -22,11 +24,12 @@ function withTempWorkspace(fn) {
 		spawnSync(process.execPath, [script, ...args], {
 			cwd: dir,
 			encoding: 'utf8',
-			env: { ...process.env, INIT_CWD: dir },
+			env: { ...process.env, INIT_CWD: dir, BLOG_BLOCKLIST: blocklist },
 		});
 	try {
 		return fn({
 			dir,
+			blocklist,
 			newPost: (args) => run(newPost, args),
 			publish: (args) => run(PUBLISH_POST, args),
 		});
@@ -87,6 +90,50 @@ describe('new-post --input', () => {
 });
 
 describe('publish-post', () => {
+	test('외부 목록의 금지어는 대소문자와 관계없이 발행을 막고 줄번호를 보여 준다', () => {
+		withTempWorkspace(({ dir, blocklist, publish }) => {
+			const file = join(dir, 'post.md');
+			const before = `${FILLED}테스트 전용 PATCH[v1]\n`;
+			writeFileSync(file, before, 'utf8');
+			writeFileSync(blocklist, '  # 주석\n\n  patch[v1]  \n', 'utf8');
+			const res = publish([file]);
+			assert.equal(res.status, 1);
+			assert.ok(res.stderr.includes(`${FILLED.split('\n').length}째 줄 · 금지어 「patch[v1]」`));
+			assert.deepEqual(readFileSync(file), Buffer.from(before));
+		});
+	});
+
+	test('가짜 토큰은 --force 로도 막고 --allow-sensitive 를 쓰면 경고 후 발행한다', () => {
+		withTempWorkspace(({ dir, publish }) => {
+			const file = join(dir, 'post.md');
+			const token = `ghp_${'a'.repeat(20)}`;
+			const before = `${FILLED}<!-- ${token} -->\n`;
+			writeFileSync(file, before, 'utf8');
+			const blocked = publish([file, '--force']);
+			assert.equal(blocked.status, 1);
+			assert.match(blocked.stderr, /GitHub 토큰 「ghp_aa…」/);
+			assert.ok(!blocked.stderr.includes(token));
+			assert.deepEqual(readFileSync(file), Buffer.from(before));
+			const allowed = publish([file, '--allow-sensitive']);
+			assert.equal(allowed.status, 0, allowed.stderr);
+			assert.match(allowed.stderr, /주의: --allow-sensitive/);
+			assert.ok(!allowed.stderr.includes(token));
+			assert.match(readFileSync(file, 'utf8'), /^draft: false/m);
+		});
+	});
+
+	test('금지어 목록 파일이 없으면 경고하고 깨끗한 글을 발행한다', () => {
+		withTempWorkspace(({ dir, blocklist, publish }) => {
+			const file = join(dir, 'post.md');
+			rmSync(blocklist);
+			writeFileSync(file, FILLED, 'utf8');
+			const res = publish([file]);
+			assert.equal(res.status, 0, res.stderr);
+			assert.ok(res.stderr.includes(`금지어 목록 없음: ${blocklist} — 금지어 검사를 건너뜁니다`));
+			assert.match(readFileSync(file, 'utf8'), /^draft: false/m);
+		});
+	});
+
 	test('new-post 틀 그대로면(빈 요약·빈 소제목·재료) 발행하지 않고 파일도 바꾸지 않는다', () => {
 		withTempWorkspace(({ dir, newPost, publish }) => {
 			writeFileSync(join(dir, '재료.md'), '오늘 한 일', 'utf8');

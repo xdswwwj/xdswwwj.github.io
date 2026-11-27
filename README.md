@@ -49,6 +49,7 @@ npm run publish-post -- src/content/blog/2026/11/2026-11-11-my-slug.md   # draft
 ```
 
 - 빈 `description`, 내용 없는 소제목, `TODO:`, `<!-- 재료` 주석이 남아 있으면 바꾸지 않고 멈춥니다. 그래도 발행하려면 끝에 `--force`.
+- 발행 전 금지어 검사: `~/.config/blog/blocklist.txt` (또는 `BLOG_BLOCKLIST`)에 한 줄에 하나씩 적고 저장소에는 올리지 않습니다. API 키·토큰·내부 IP·이메일도 검사하며, 일부러 넘길 때만 `--allow-sensitive`를 씁니다.
 - 파일 이름(글 주소)은 바뀌지 않습니다. 바뀐 파일을 main 에 올리면 공개됩니다.
 
 ## 개인화 포인트
